@@ -1,0 +1,203 @@
+// A PEG grammar to parse only imports and main function if there is a main function.
+{
+package parser
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+// -----------------------------------------------------------------------------
+// ## Go Helper Code
+// -----------------------------------------------------------------------------
+func toSlice[T any](v any) []T {
+	if v == nil { return nil }
+	if s, ok := v.([]any); ok {
+		res := make([]T, len(s))
+		for i, item := range s { res[i] = item.(T) }
+		return res
+	}
+	val, ok := v.(T)
+	if !ok { panic(fmt.Sprintf("failed to convert to slice: unexpected type %T for target type %T", v, *new(T))) }
+	return []T{val}
+}
+
+// Helper functions for parsing literals
+func parseInteger(text []byte) (int64, error) {
+	s := strings.ReplaceAll(string(text), "_", "")
+	if len(s) > 2 {
+		switch s[0:2] {
+		case "0x", "0X": return strconv.ParseInt(s[2:], 16, 64)
+		case "0o", "0O": return strconv.ParseInt(s[2:], 8, 64)
+		case "0b", "0B": return strconv.ParseInt(s[2:], 2, 64)
+		}
+	}
+	return strconv.ParseInt(s, 10, 64)
+}
+
+func parseFloat(text []byte) (float64, error) {
+	s := strings.ReplaceAll(string(text), "_", "")
+	return strconv.ParseFloat(s, 64)
+}
+
+func unquoteString(text []byte) (string, error) { return strconv.Unquote(string(text)) }
+
+
+// -----------------------------------------------------------------------------
+// ## AST Node Definitions
+// -----------------------------------------------------------------------------
+
+type Node interface{}
+type Statement interface{ Node }
+type Expression interface{ Node }
+type Type interface{ Node }
+type Pattern interface{ Node }
+
+type SourceFile struct { Statements []Node }
+type Identifier struct { Name string }
+type Discard struct { Name string }
+type Parameter struct { Label, Name string; Type Type }
+type Function struct { Public bool; Name string; Parameters []Parameter; ReturnType Type; }
+type Import struct {
+	Module      string
+	Unqualified []UnqualifiedImport
+	Alias       string
+}
+
+// Represents a single item in an unqualified import list, e.g., `MyType` in `import gleam.{MyType}`.
+type UnqualifiedImport struct {
+	Name   string
+	Alias  string
+	IsType bool // Differentiates `type MyType` from `MyFunction`
+}
+
+}
+
+// -----------------------------------------------------------------------------
+// ## Grammar Entrypoint
+// -----------------------------------------------------------------------------
+
+SourceFile <- _ first:(Import / MainFunction / IgnoredContent)? rest:(_ (Import / MainFunction / IgnoredContent))* _ EOF {
+	if first == nil {
+		return nil, nil
+	}
+    validStatements := []Node{first}
+    if rest != nil {
+        for _, s := range rest.([]any) {
+            if s != nil {
+				if val, ok := s.([]any); ok && val[1] != nil {
+                	validStatements = append(validStatements, val[1].(Node))
+				}
+            }
+        }
+    }
+    return SourceFile{Statements: validStatements}, nil
+}
+
+MainFunction <- pub:("pub" __)? "fn" __ "main" _ params:FunctionParameters returnGroup:(_ "->" _ Type)? _ body:IgnoredBlock? {
+    // We hardcode the name to "main"
+    f := Function{Name: "main"}
+    if pub != nil { f.Public = true }
+    if params != nil { f.Parameters = params.([]Parameter) }
+    // The body is ignored, but you could capture it as a raw string if needed.
+    if returnGroup != nil { f.ReturnType = returnGroup.([]any)[3].(Type) }
+    return f, nil
+}
+
+FunctionParameters <- "(" _ params:(FunctionParameter (_ "," _ FunctionParameter)* _ ","?)? _ ")" {
+	return toSlice[Parameter](params), nil
+}
+
+FunctionParameter <- p:(LabeledNameParam / NameParam / DiscardParam) typ:TypeAnnotation? {
+	param := p.(Parameter)
+	if typ != nil { param.Type = typ.(Type) }
+	return param, nil
+}
+TypeAnnotation <- ":" _ t:Type { return t, nil }
+Type <- Identifier // Simplified for now
+LabeledNameParam <- label:Label _ name:Identifier {
+	return Parameter{Label: label.(string), Name: name.(Identifier).Name}, nil
+}
+NameParam <- name:Identifier { return Parameter{Name: name.(Identifier).Name}, nil }
+DiscardParam <- name:Discard { return Parameter{Name: name.(string)}, nil }
+Identifier <- Name { return Identifier{Name: string(c.text)}, nil }
+Discard <- DiscardName { return Discard{Name: string(c.text)}, nil }
+Label <- Name { return string(c.text), nil }
+
+IgnoredContent <- (!("import" / "pub" __ "fn" __ "main") .)+ { return nil, nil }
+IgnoredBlock <- "{" (IgnoredBlock / !"}" .)* "}" { return nil, nil }
+
+// -----------------------------------------------------------------------------
+// ## Whitespace & Comments
+// -----------------------------------------------------------------------------
+
+_ "whitespace" <- (Whitespace / Comment)*
+__ "whitespace" <- (Whitespace / Comment)+
+Whitespace <- [ \t\r\n]
+Comment <- "//" (!'\n' .)* { return nil, nil }
+
+// -----------------------------------------------------------------------------
+// ## Module-level & Top-level Statements
+// -----------------------------------------------------------------------------
+
+Import <- "import" __ mod:Module unqual:(_ "." _ UnqualifiedImports)? alias:(_ "as" __ Identifier)? {
+    imp := Import{Module: mod.(string)}
+    if alias != nil {
+        imp.Alias = alias.([]any)[3].(Identifier).Name
+    }
+    if unqual != nil {
+        imp.Unqualified = unqual.([]any)[3].([]UnqualifiedImport)
+    }
+    return imp, nil
+}
+
+Module <- Name (_ "/" _ Name)* {
+    return string(c.text), nil
+}
+
+// This rule now just handles the curly braces and calls the list-builder.
+UnqualifiedImports <- "{" _ items:UnqualifiedImportList? _ "}" {
+    if items == nil {
+        return []UnqualifiedImport{}, nil
+    }
+    return items, nil
+}
+
+// This new rule is dedicated to building the list of imports correctly.
+UnqualifiedImportList <- first:UnqualifiedImport rest:(_ "," _ UnqualifiedImport)* _ ","? {
+    // Start the list with the first item. The type assertion is safe here.
+    imports := []UnqualifiedImport{first.(UnqualifiedImport)}
+
+    // If there are more items, loop through them.
+    if rest != nil {
+        for _, pair := range toSlice[[]any](rest) {
+            // Extract the UnqualifiedImport, which is the 4th element.
+            imports = append(imports, pair[3].(UnqualifiedImport))
+        }
+    }
+    return imports, nil
+}
+
+UnqualifiedImport <- itemType:("type" __)? name:(UpName / Name) alias:(_ "as" __ (UpName / Name))? {
+    imp := UnqualifiedImport{Name: name.(string)}
+    if itemType != nil {
+        imp.IsType = true
+    }
+	if alias != nil {
+		imp.Alias = alias.([]any)[3].(string)
+	}
+    return imp, nil
+}
+
+// -----------------------------------------------------------------------------
+// ## Expressions
+// -----------------------------------------------------------------------------
+
+
+Name        <- !KEYWORD [a-z_] [a-z0-9_]* { return string(c.text), nil }
+UpName      <- [A-Z] [a-zA-Z0-9]* { return string(c.text), nil }
+DiscardName <- "_" [a-z0-9_]*
+
+KEYWORD <- ("as" / "case" / "const" / "if" / "import" / "let" / "pub" / "type" / "use") !([a-zA-Z0-9_])
+EOF     <- !.

@@ -1,0 +1,9 @@
+bazel_dep(name = "rules_gleam", version = "0.0.0", dev_dependency = True)
+
+local_path_override(
+    module_name = "rules_gleam",
+    path = "../..",
+)
+
+
+bazel_dep(name = "gazelle", version = "0.45.0")
