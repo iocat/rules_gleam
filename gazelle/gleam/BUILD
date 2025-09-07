@@ -8,7 +8,7 @@ package(
 gazelle(name = "gazelle")
 
 go_library(
-    name = "gleam",
+    name = "gleam_library",
     srcs = [
         "configurer.go",
         "language.go",
@@ -19,10 +19,10 @@ go_library(
     importpath = "github.com/iocat/rules_gleam/gazelle/gleam",
     deps = [
         "//gazelle/gleam/parser",
-        "@com_github_kr_pretty//:pretty",
         "@gazelle//config",
         "@gazelle//label",
         "@gazelle//language",
+        "@gazelle//pathtools",
         "@gazelle//repo",
         "@gazelle//resolve",
         "@gazelle//rule",
@@ -30,7 +30,7 @@ go_library(
 )
 
 gazelle_binary(
-    name = "gleam_gazelle",
-    languages = [":gleam"],
+    name = "gleam",
+    languages = [":gleam_library"],
     visibility = ["//visibility:public"],
 )

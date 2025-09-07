@@ -72,7 +72,7 @@ def _gleam_binary_impl(ctx):
             dep_beam = ctx.actions.declare_file(paths.basename(dep_beam_module.path))
             ctx.actions.symlink(output = dep_beam, target_file = dep_beam_module)
             dep_beam_symlinks.append(dep_beam)
-    runfiles.merge(ctx.runfiles(files = dep_beam_symlinks))
+    runfiles = runfiles.merge(ctx.runfiles(files = dep_beam_symlinks))
 
     return [
         DefaultInfo(files = depset(outputs.beam_files + [outputs.output_entry_point, outputs.beam_app_manifest]), default_runfiles = runfiles, executable = outputs.output_entry_point),

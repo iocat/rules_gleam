@@ -7,11 +7,12 @@ package(
 
 gazelle(
     name = "gazelle",
-    gazelle = "@rules_gleam//gazelle/gleam:gleam_gazelle",
+    gazelle = "@rules_gleam//gazelle/gleam",
 )
 
 gleam_binary(
     name = "example",
     srcs = ["example.gleam"],
     visibility = ["//visibility:private"],
+    deps = ["//demo"],
 )

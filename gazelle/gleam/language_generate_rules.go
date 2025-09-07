@@ -1,11 +1,14 @@
 package gleam
 
 import (
+	"fmt"
 	"log"
 	"sort"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
 	lang "github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/iocat/rules_gleam/gazelle/gleam/parser"
 
@@ -29,11 +32,17 @@ type gleamModuleBundle struct {
 	isBin bool
 	// Maps to fully qualified module names.
 	modules map[string]gleamModuleInfo
+
+	rel string
+	c   *config.Config
 }
 
-func (gmb *gleamModuleBundle) imports() []string {
+func (gmb *gleamModuleBundle) imports(filterModule func(string) bool) []string {
 	imports := map[string]bool{}
 	for _, module := range gmb.modules {
+		if !filterModule(module.moduleName) {
+			continue
+		}
 		for _, imp := range module.imports {
 			imports[imp] = true
 		}
@@ -47,6 +56,18 @@ func (gmb *gleamModuleBundle) imports() []string {
 	return importStrings
 }
 
+func (gmb *gleamModuleBundle) nonInternalImports() []string {
+	return gmb.imports(func(m string) bool {
+		return m != "internal"
+	})
+}
+
+func (gmb *gleamModuleBundle) internalImports() []string {
+	return gmb.imports(func(m string) bool {
+		return m == "internal"
+	})
+}
+
 func (gmb *gleamModuleBundle) sources() []string {
 	files := []string{}
 	for _, module := range gmb.modules {
@@ -56,7 +77,9 @@ func (gmb *gleamModuleBundle) sources() []string {
 }
 
 func (gmb *gleamModuleBundle) relsToIndex() []string {
-	imports := gmb.imports()
+	imports := gmb.imports(func (m string) bool {
+		return true
+	})
 	rel := []string{}
 	for _, imp := range imports {
 		// stdlib does not need to be indexed.
@@ -68,9 +91,76 @@ func (gmb *gleamModuleBundle) relsToIndex() []string {
 	return rel
 }
 
-func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResult {
+// Gets the visiblity for the rule.
+func (gmb *gleamModuleBundle) nonInternalVisibility() []string {
+	// SEE https://github.com/bazel-contrib/bazel-gazelle/blob/master/language/go/generate.go#L844
 
-	gleamBundle := &gleamModuleBundle{modules: make(map[string]gleamModuleInfo)}
+	relIndex := pathtools.Index(gmb.rel, "internal")
+	configVisibility := GetGleamConfig(gmb.c).gleamVisibility
+
+	visibility := configVisibility
+	// Currently processing an internal module (in a internal directory.)
+	if relIndex >= 0 {
+		parent := strings.TrimSuffix(gmb.rel[:relIndex], "/")
+		visibility = append(visibility, fmt.Sprintf("//%s:__subpackages__", parent))
+	} else if len(configVisibility) == 0 {
+		return []string{"//visibility:public"}
+	} else {
+		return configVisibility
+	}
+
+	return visibility
+}
+
+func (gmb *gleamModuleBundle) internalModule() *gleamModuleInfo {
+	for _, module := range gmb.modules {
+		if module.moduleName == "internal" {
+			return &module
+		}
+	}
+	return nil
+}
+
+func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
+	ruleKind := "gleam_library"
+	if gmb.isBin {
+		ruleKind = "gleam_binary"
+	}
+
+	internalModule := gmb.internalModule()
+	rules := []*rule.Rule{}
+	r := rule.NewRule(ruleKind, gmb.name)
+	if gmb.isBin {
+		r.SetAttr("visibility", []string{"//visibility:private"})
+	} else {
+		r.SetAttr("visibility", gmb.nonInternalVisibility())
+	}
+	r.SetAttr("srcs", filter(gmb.sources(), func(m string) bool {
+		return internalModule == nil || m != internalModule.file
+	}))
+	rules = append(rules, r)
+
+	if internalModule != nil {
+		internalR := rule.NewRule("gleam_library", gmb.name+"_internal")
+		internalR.SetAttr("srcs", []string{internalModule.file})
+		internalR.SetAttr("visibility", []string{fmt.Sprintf("//%s:__subpackages__", gmb.rel)})
+		rules = append(rules, internalR)
+	}
+	return rules
+}
+
+/** Returns import, must be of the same size as generate rules returned. */
+func (gmb *gleamModuleBundle) generateImports() []any {
+	imports := []any{gmb.nonInternalImports()}
+	im := gmb.internalModule()
+	if im != nil {
+		imports = append(imports, gmb.internalImports())
+	}
+	return imports
+}
+
+func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResult {
+	gleamBundle := &gleamModuleBundle{modules: make(map[string]gleamModuleInfo), c: args.Config, rel: args.Rel}
 	name := path.Base(args.Rel)
 	if len(name) == 0 {
 		name = "lib"
@@ -95,25 +185,15 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 
 	gleamBundle.name = name
 	gleamBundle.isBin = isBin
-	ruleKind := "gleam_library"
-	if gleamBundle.isBin {
-		ruleKind = "gleam_binary"
+	importsList := gleamBundle.generateImports()
+	rulesList := gleamBundle.generateRules()
+	if len(rulesList) != len(importsList) {
+		panic("Rules and imports should be of the same size. Check implementation.")
 	}
-
-	r := rule.NewRule(ruleKind, name)
-	if gleamBundle.isBin {
-		r.SetAttr("visibility", []string{"//visibility:private"})
-	}
-	r.SetAttr("srcs", gleamBundle.sources())
-
 	// We don't add/remove rules.
 	return lang.GenerateResult{
-		Imports: []any{
-			gleamBundle.imports(),
-		},
-		Gen: []*rule.Rule{
-			r,
-		},
+		Imports:     gleamBundle.generateImports(),
+		Gen:         gleamBundle.generateRules(),
 		Empty:       []*rule.Rule{},
 		RelsToIndex: gleamBundle.relsToIndex(),
 	}
@@ -129,13 +209,15 @@ func getGleamModuleInfo(dir, file string, rel string) (*gleamModuleInfo, error) 
 		log.Printf("failed to parse file %s: %v", filePath, err)
 		return nil, nil
 	}
-	for _, stmt := range parseTree.(parser.SourceFile).Statements {
-		switch s := stmt.(type) {
-		case parser.Import:
-			imports = append(imports, s.Module)
-		case parser.Function:
-			if s.Name == "main" && s.Public && len(s.Parameters) == 0 {
-				hasMainFunction = true
+	if parseTree != nil {
+		for _, stmt := range parseTree.(parser.SourceFile).Statements {
+			switch s := stmt.(type) {
+			case parser.Import:
+				imports = append(imports, s.Module)
+			case parser.Function:
+				if s.Name == "main" && s.Public && len(s.Parameters) == 0 {
+					hasMainFunction = true
+				}
 			}
 		}
 	}

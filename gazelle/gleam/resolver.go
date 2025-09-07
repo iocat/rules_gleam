@@ -33,7 +33,7 @@ func (g *gleamLanguage) Imports(c *config.Config, r *rule.Rule, f *rule.File) []
 	srcs := r.AttrStrings("srcs")
 	imports := make([]resolve.ImportSpec, len(srcs))
 	for i, src := range r.AttrStrings("srcs") {
-		if path.Ext(src) != "gleam" {
+		if path.Ext(src) != ".gleam" {
 			continue
 		}
 		imports[i] = resolve.ImportSpec{Lang: g.Name(), Imp: path.Join(f.Pkg, strings.TrimSuffix(src, gleamExt))}
@@ -66,7 +66,12 @@ func (g *gleamLanguage) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *rep
 			// If resolveGleam has any other error, log it.
 			log.Print(err)
 		}else {
-			label := depLabel.Rel(depLabel.Repo, depLabel.Pkg)
+			var label label.Label
+			if depLabel.Pkg == from.Pkg && depLabel.Repo == from.Repo {
+				label = depLabel.Rel(depLabel.Repo, depLabel.Pkg)
+			}else {
+				label = depLabel.Abs(depLabel.Repo, depLabel.Pkg)
+			}
 			depSet[label.String()] = true
 		}
 	}
@@ -96,7 +101,6 @@ func (g *gleamLanguage) resolveGleam(c *config.Config, ix *resolve.RuleIndex, rc
 	}
 	results := ix.FindRulesByImportWithConfig(c, resolve.ImportSpec{Lang: g.Name(), Imp: imp}, g.Name())
 	if len(results) == 0 {
-		fmt.Println(imp)
 		return label.NoLabel, errNotFound
 	} else if len(results) > 1 {
 		return label.NoLabel, fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", results[0].Label, results[1].Label, imp, from)

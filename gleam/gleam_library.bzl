@@ -17,7 +17,7 @@ def _gleam_library_impl(ctx):
         command = """
             COMPILER="$(pwd)/%s" &&
             cd %s &&
-            $COMPILER --package '.' --target erlang --out '.' --lib %s &&
+            $COMPILER compile-package --package '.' --target erlang --out '.' --lib %s &&
             mv ./%s/* ./ &&
             mv ./ebin/* ./
         """ % (gleam_compiler.path, working_root, lib_path, GLEAM_ARTEFACTS_DIR),
