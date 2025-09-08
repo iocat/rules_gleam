@@ -1,5 +1,5 @@
 load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -8,7 +8,7 @@ package(
 gazelle(name = "gazelle")
 
 go_library(
-    name = "gleam_library",
+    name = "gleam",
     srcs = [
         "configurer.go",
         "language.go",
@@ -19,6 +19,7 @@ go_library(
     importpath = "github.com/iocat/rules_gleam/gazelle/gleam",
     deps = [
         "//gazelle/gleam/parser",
+        "@com_github_kr_pretty//:pretty",
         "@gazelle//config",
         "@gazelle//label",
         "@gazelle//language",
@@ -30,7 +31,25 @@ go_library(
 )
 
 gazelle_binary(
-    name = "gleam",
-    languages = [":gleam_library"],
-    visibility = ["//visibility:public"],
+    name = "gazelle_binary",
+    languages = [":gleam"],
+    visibility = ["//gazelle:__subpackages__"],
+)
+
+go_test(
+    name = "gleam_test",
+    srcs = ["language_generate_rules_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":gleam"],
+    deps = [
+        "@com_github_bazelbuild_buildtools//build",
+        "@com_github_google_go_cmp//cmp",
+        "@gazelle//config",
+        "@gazelle//language",
+        "@gazelle//merger",
+        "@gazelle//resolve",
+        "@gazelle//rule",
+        "@gazelle//testtools",
+        "@gazelle//walk",
+    ],
 )

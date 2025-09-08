@@ -1,8 +1,24 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GLEAM_EBIN_DIR", "GleamErlPackageInfo")
 
-def declare_out_file_with_ext(ctx, src, ext):
-    file_path = paths.replace_extension(src.path, ext).replace("/", "@")
+def declare_out_file_with_ext(ctx, src, ext, fully_qual_path = True):
+    """Declare a file with the given extension
+
+    Args:
+        ctx: The Bazel context
+        src: The source file
+        ext: The extension to append to the file name
+        fully_qual_path: True if the declared file should have a fully qualified path, false otherwise
+
+    Returns:
+        A file object representing the declared file
+    """
+    file_path = ""
+    if fully_qual_path:
+        file_path = paths.replace_extension(src.path, ext).replace("/", "@")
+    else:
+        file_path = paths.replace_extension(paths.basename(src.path), ext)
+
     file = ctx.actions.declare_file(file_path)
     return file
 
@@ -42,7 +58,6 @@ def declare_outputs(ctx, srcs, *, is_binary, main_module):
     output_erl_mods = []
     output_beam_files = []
     output_cache_files = []
-    output_binary_erl_mod = None
     output_binary_beam = None
     output_entry_point = None
     beam_app_manifest = None
@@ -50,22 +65,24 @@ def declare_outputs(ctx, srcs, *, is_binary, main_module):
     for src in srcs:
         module_name = paths.replace_extension(src.path, "").replace("/", "@")
         module_names.append(module_name)
-        output_erl_mods.append(declare_out_file_with_ext(ctx, src, ".erl"))
-        output_beam_files.append(declare_out_file_with_ext(ctx, src, ".beam"))
-        output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache"))
-        output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache_meta"))
+        ext = paths.split_extension(src.path)[1]
+        if ext == ".gleam":
+            # Gleam produces other artefacts.
+            output_erl_mods.append(declare_out_file_with_ext(ctx, src, ".erl"))
+            output_beam_files.append(declare_out_file_with_ext(ctx, src, ".beam"))
+            output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache"))
+            output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache_meta"))
+        if ext == ".erl":
+            # Erl produces only beam, since there's only one bytecode compilation pass.
+            output_beam_files.append(declare_out_file_with_ext(ctx, src, ".beam", fully_qual_path = False))
         all_files.extend(output_erl_mods)
         all_files.extend(output_beam_files)
         all_files.extend(output_cache_files)
 
     if is_binary:
-        # Main has no cached, build is handle entirely in gleam_binary rule.
-        # output_binary_erl_mod = ctx.actions.declare_file(main_module + "@@main.erl")
         output_binary_beam = ctx.actions.declare_file(main_module + "@@main.beam")
         output_entry_point = ctx.actions.declare_file(main_module + ".sh")
         beam_app_manifest = ctx.actions.declare_file(main_module + ".app")
-
-        # output_erl_mods.append(output_binary_erl_mod)
         output_beam_files.append(output_binary_beam)
 
     return struct(
@@ -112,6 +129,9 @@ def declare_lib_files_for_dep(ctx, deps):
             - str: The path to the root of the created `lib` directory.
     """
     lib_gleam_art_files = []
+
+    # Beam modules are typically namespaced, unless it's an external module or
+    # modules for FFI, then there might be conflicts.
     lib_beam_files = []
     for dep in deps:
         target = dep[GleamErlPackageInfo]
@@ -130,13 +150,20 @@ def declare_lib_files_for_dep(ctx, deps):
         )
         lib_inputs.append(link)
 
+    seen_beam_module = set()
     for lib_gleam_beam_file in lib_beam_files:
-        link = ctx.actions.declare_file(paths.join(lib_path, "placeholder", GLEAM_EBIN_DIR, paths.basename(lib_gleam_beam_file.path)))
-        ctx.actions.symlink(
-            output = link,
-            target_file = lib_gleam_beam_file,
-        )
-        lib_inputs.append(link)
+        if paths.basename(lib_gleam_beam_file.path) in seen_beam_module:
+            fail("""Beam module {MODULE} is causing duplicates, probably because of Gleam Erlang FFI has 
+                conflicting name. Note that gleam_erl_library() does not create
+                namespaces like a Gleam module. Make sure your FFI module is unique!""".format(MODULE = lib_gleam_beam_file.path))
+        else:
+            seen_beam_module.add(paths.basename(lib_gleam_beam_file.path))
+            link = ctx.actions.declare_file(paths.join(lib_path, "placeholder", GLEAM_EBIN_DIR, paths.basename(lib_gleam_beam_file.path)))
+            ctx.actions.symlink(
+                output = link,
+                target_file = lib_gleam_beam_file,
+            )
+            lib_inputs.append(link)
     return (lib_inputs, paths.join("lib", "erlang") if len(lib_inputs) > 0 else ".")
 
 def declare_inputs(ctx, srcs, *, is_binary = False, main_module = "", main_template = ""):

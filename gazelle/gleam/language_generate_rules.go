@@ -11,6 +11,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/iocat/rules_gleam/gazelle/gleam/parser"
+	_ "github.com/kr/pretty"
 
 	"path"
 	"path/filepath"
@@ -26,10 +27,18 @@ type gleamModuleInfo struct {
 	hasMainFn bool
 }
 
+type ruleKind string
+
+var (
+	ruleKindLib    ruleKind = "gleam_library"
+	ruleKindBin    ruleKind = "gleam_binary"
+	ruleKindErlLib ruleKind = "gleam_erl_library"
+)
+
 type gleamModuleBundle struct {
 	// default to the package name, but if root will be set to "lib" or "bin"
-	name  string
-	isBin bool
+	name string
+	kind ruleKind
 	// Maps to fully qualified module names.
 	modules map[string]gleamModuleInfo
 
@@ -38,9 +47,15 @@ type gleamModuleBundle struct {
 }
 
 func (gmb *gleamModuleBundle) imports(filterModule func(string) bool) []string {
-	imports := map[string]bool{}
+	if gmb == nil {
+		return []string{}
+	}
+	imports := make(map[string]bool)
 	for _, module := range gmb.modules {
 		if !filterModule(module.moduleName) {
+			continue
+		}
+		if len(module.imports) == 0 {
 			continue
 		}
 		for _, imp := range module.imports {
@@ -77,7 +92,7 @@ func (gmb *gleamModuleBundle) sources() []string {
 }
 
 func (gmb *gleamModuleBundle) relsToIndex() []string {
-	imports := gmb.imports(func (m string) bool {
+	imports := gmb.imports(func(m string) bool {
 		return true
 	})
 	rel := []string{}
@@ -122,17 +137,13 @@ func (gmb *gleamModuleBundle) internalModule() *gleamModuleInfo {
 }
 
 func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
-	ruleKind := "gleam_library"
-	if gmb.isBin {
-		ruleKind = "gleam_binary"
-	}
-
 	internalModule := gmb.internalModule()
 	rules := []*rule.Rule{}
-	r := rule.NewRule(ruleKind, gmb.name)
-	if gmb.isBin {
+	r := rule.NewRule(string(gmb.kind), gmb.name)
+	switch gmb.kind {
+	case ruleKindBin:
 		r.SetAttr("visibility", []string{"//visibility:private"})
-	} else {
+	case ruleKindLib, ruleKindErlLib:
 		r.SetAttr("visibility", gmb.nonInternalVisibility())
 	}
 	r.SetAttr("srcs", filter(gmb.sources(), func(m string) bool {
@@ -144,7 +155,15 @@ func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 		internalR := rule.NewRule("gleam_library", gmb.name+"_internal")
 		internalR.SetAttr("srcs", []string{internalModule.file})
 		internalR.SetAttr("visibility", []string{fmt.Sprintf("//%s:__subpackages__", gmb.rel)})
+		
 		rules = append(rules, internalR)
+	}
+
+	imports := gmb.generateImports()
+	for i, r := range rules {
+		// Like go implementation, we set this private useable for testing.
+		// After merging phase, this attribute will be removed.
+		r.SetPrivateAttr(config.GazelleImportsKey, imports[i].([]string))
 	}
 	return rules
 }
@@ -160,40 +179,76 @@ func (gmb *gleamModuleBundle) generateImports() []any {
 }
 
 func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResult {
-	gleamBundle := &gleamModuleBundle{modules: make(map[string]gleamModuleInfo), c: args.Config, rel: args.Rel}
+	bundles := []*gleamModuleBundle{}
 	name := path.Base(args.Rel)
 	if len(name) == 0 {
 		name = "lib"
 	}
-	isBin := false
+
+	var gleamBundle, gleamFFIBundle *gleamModuleBundle
 	// For each of the Gleam file in the directory. Create a
 	for _, file := range args.RegularFiles {
-		if path.Ext(file) != gleamExt {
-			continue
-		}
-		module, err := getGleamModuleInfo(args.Dir, file, args.Rel)
-		if err != nil {
-			log.Print(err)
-			return lang.GenerateResult{}
-		}
-		gleamBundle.modules[module.moduleName] = *module
-		if module.hasMainFn {
-			name = "bin"
-			isBin = true
+		ext := path.Ext(file)
+
+		switch ext {
+		case gleamExt:
+			if gleamBundle == nil {
+				gleamBundle = &gleamModuleBundle{kind: ruleKindLib, name: name, modules: make(map[string]gleamModuleInfo), c: args.Config, rel: args.Rel}
+			}
+			module, err := getGleamModuleInfo(args.Dir, file, args.Rel)
+			if err != nil {
+				log.Print(err)
+				return lang.GenerateResult{}
+			}
+			gleamBundle.modules[module.moduleName] = *module
+			if module.hasMainFn {
+				if len(name) == 0 {
+					gleamBundle.name = "bin"
+				}
+				gleamBundle.kind = ruleKindBin
+			}
+		case erlExt:
+			if gleamFFIBundle == nil {
+				gleamFFIBundle = &gleamModuleBundle{kind: ruleKindErlLib, name: fmt.Sprintf("%s_ffi", name), modules: make(map[string]gleamModuleInfo), c: args.Config, rel: args.Rel}
+			}
+
+			nonNsModule := strings.TrimSuffix(filepath.Base(file), erlExt)
+			if _, ok := gleamFFIBundle.modules[nonNsModule]; ok {
+				log.Printf("Duplicate Erl FFI module name, please consider rename, Gleam FFI implementation doesn't have dir-like namespace: %s", nonNsModule)
+				if len(gleamFFIBundle.modules) == 0 {
+					gleamFFIBundle = nil
+					continue
+				}
+			}
+			gleamFFIBundle.modules[nonNsModule] = gleamModuleInfo{
+				moduleName:    nonNsModule,
+				file:          file,
+				moduleParents: []string{},
+				imports:       []string{}, // No imports for Erl FFI
+			}
 		}
 	}
 
-	gleamBundle.name = name
-	gleamBundle.isBin = isBin
-	importsList := gleamBundle.generateImports()
-	rulesList := gleamBundle.generateRules()
+	if gleamBundle != nil {
+		bundles = append(bundles, gleamBundle)
+	}
+	if gleamFFIBundle != nil {
+		bundles = append(bundles, gleamFFIBundle)
+	}
+
+	importsList := []any{}
+	rulesList := []*rule.Rule{}
+	for _, bundle := range bundles {
+		importsList = append(importsList, bundle.generateImports()...)
+		rulesList = append(rulesList, bundle.generateRules()...)
+	}
 	if len(rulesList) != len(importsList) {
 		panic("Rules and imports should be of the same size. Check implementation.")
 	}
 	// We don't add/remove rules.
 	return lang.GenerateResult{
-		Imports:     gleamBundle.generateImports(),
-		Gen:         gleamBundle.generateRules(),
+		Imports:     importsList,
+		Gen:         rulesList,
 		Empty:       []*rule.Rule{},
 		RelsToIndex: gleamBundle.relsToIndex(),
 	}
@@ -202,9 +257,9 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 func getGleamModuleInfo(dir, file string, rel string) (*gleamModuleInfo, error) {
 	filePath := path.Clean(path.Join(dir, file))
 
-	imports := []string{}
+	imports := map[string]bool{}
 	hasMainFunction := false
-	parseTree, err := parser.ParseFile(filePath)
+	parseTree, err := parser.ParseFile(filePath, parser.Debug(false))
 	if err != nil {
 		log.Printf("failed to parse file %s: %v", filePath, err)
 		return nil, nil
@@ -213,10 +268,17 @@ func getGleamModuleInfo(dir, file string, rel string) (*gleamModuleInfo, error) 
 		for _, stmt := range parseTree.(parser.SourceFile).Statements {
 			switch s := stmt.(type) {
 			case parser.Import:
-				imports = append(imports, s.Module)
+				imports[s.Module] = true
 			case parser.Function:
 				if s.Name == "main" && s.Public && len(s.Parameters) == 0 {
 					hasMainFunction = true
+				}
+				if len(s.ExternalAttributes) > 0 {
+					erlImports := filter(s.ExternalAttributes, func(a parser.ExternalAttribute) bool { return a.TargetLang == "erlang" })
+					if len(erlImports) > 0 {
+						erlImport := erlImports[0]
+						imports[fmt.Sprintf("erl:%s", erlImport.Module)] = true
+					}
 				}
 			}
 		}
@@ -224,5 +286,5 @@ func getGleamModuleInfo(dir, file string, rel string) (*gleamModuleInfo, error) 
 
 	moduleParents := filepath.SplitList(rel)
 	moduleName := strings.TrimSuffix(file, gleamExt)
-	return &gleamModuleInfo{imports: imports, moduleParents: moduleParents, moduleName: moduleName, hasMainFn: hasMainFunction, file: file}, nil
+	return &gleamModuleInfo{imports: collect(imports), moduleParents: moduleParents, moduleName: moduleName, hasMainFn: hasMainFunction, file: file}, nil
 }

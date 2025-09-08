@@ -1,0 +1,15 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_library")
+
+gleam_library(
+    name = "internalmodule",
+    srcs = ["calculator.gleam"],
+    _gazelle_imports = ["internalmodule/internal"],
+    visibility = ["//visibility:public"],
+)
+
+gleam_library(
+    name = "internalmodule_internal",
+    srcs = ["internal.gleam"],
+    _gazelle_imports = [],
+    visibility = ["//internalmodule:__subpackages__"],
+)

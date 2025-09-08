@@ -1,0 +1,8 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_library")
+
+gleam_library(
+    name = "internalpackage",
+    srcs = ["hello.gleam"],
+    _gazelle_imports = ["internalpackage/internal/demo"],
+    visibility = ["//visibility:public"],
+)

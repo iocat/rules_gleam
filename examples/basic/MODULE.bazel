@@ -5,5 +5,7 @@ local_path_override(
     path = "../..",
 )
 
+use_extension("@rules_gleam//:extension", "gleam")
+
 
 bazel_dep(name = "gazelle", version = "0.45.0")

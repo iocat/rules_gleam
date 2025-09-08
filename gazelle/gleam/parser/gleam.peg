@@ -58,11 +58,22 @@ type SourceFile struct { Statements []Node }
 type Identifier struct { Name string }
 type Discard struct { Name string }
 type Parameter struct { Label, Name string; Type Type }
-type Function struct { Public bool; Name string; Parameters []Parameter; ReturnType Type; }
+type Function struct {
+    Public bool
+    Name string
+    Parameters []Parameter
+    ReturnType Type
+    ExternalAttributes []ExternalAttribute
+}
 type Import struct {
 	Module      string
 	Unqualified []UnqualifiedImport
 	Alias       string
+}
+type ExternalAttribute struct {
+    TargetLang string
+    Module string
+    Function string
 }
 
 // Represents a single item in an unqualified import list, e.g., `MyType` in `import gleam.{MyType}`.
@@ -78,7 +89,7 @@ type UnqualifiedImport struct {
 // ## Grammar Entrypoint
 // -----------------------------------------------------------------------------
 
-SourceFile <- _ first:(Import / MainFunction / IgnoredContent)? rest:(_ (Import / MainFunction / IgnoredContent))* _ EOF {
+SourceFile <- _ first:(Import / Function / IgnoredContent)? rest:(_ (Import / Function / IgnoredContent))* _ EOF {
 	if first == nil {
 		return nil, nil
 	}
@@ -95,18 +106,47 @@ SourceFile <- _ first:(Import / MainFunction / IgnoredContent)? rest:(_ (Import 
     return SourceFile{Statements: validStatements}, nil
 }
 
-MainFunction <- pub:("pub" __)? "fn" __ "main" _ params:FunctionParameters returnGroup:(_ "->" _ Type)? _ body:IgnoredBlock? {
-    // We hardcode the name to "main"
-    f := Function{Name: "main"}
+Function <- attrs:ExternalAttribute* pub:("pub" __)? "fn" __ name:Name _ params:FunctionParameters returnGroup:(_ "->" _ Type)? _ body:IgnoredBlock? {
+    f := Function{Name: name.(string)}
     if pub != nil { f.Public = true }
     if params != nil { f.Parameters = params.([]Parameter) }
-    // The body is ignored, but you could capture it as a raw string if needed.
     if returnGroup != nil { f.ReturnType = returnGroup.([]any)[3].(Type) }
+    if attrs != nil {
+        f.ExternalAttributes = toSlice[ExternalAttribute](attrs)
+    }
     return f, nil
 }
 
-FunctionParameters <- "(" _ params:(FunctionParameter (_ "," _ FunctionParameter)* _ ","?)? _ ")" {
-	return toSlice[Parameter](params), nil
+// ExternalAttribute parses a single @external(...) line and its arguments.
+ExternalAttribute <- "@" _ "external" _ "(" _ args:ExternalArgs _ ")" _ {
+	return args, nil
+}
+
+// ExternalArgs parses the three required arguments for the attribute.
+ExternalArgs <- target:("erlang" / "javascript") _ "," _ module:StringArg _ "," _ function:StringArg {
+	return ExternalAttribute{
+		TargetLang:   string(target.([]uint8)),
+		Module:   strings.Trim(module.(string), "\""),
+		Function: strings.Trim(function.(string), "\""),
+	}, nil
+}
+
+StringArg <- "\"" [^"]* "\"" { return string(c.text), nil }
+
+FunctionParameters <- "(" _ first:FunctionParameter? rest:(_ "," _ FunctionParameter)* _ ","? _ ")" {
+    if first == nil {
+        return []Parameter{}, nil
+    }
+    // Start the list with the first item. The type assertion is safe here.
+    params := []Parameter{first.(Parameter)}
+
+    // If there are more items, loop through them.
+    if rest != nil {
+        for _, paramPhrase := range toSlice[[]any](rest) {
+            params = append(params, paramPhrase[3].(Parameter))
+        }
+    }
+    return params, nil
 }
 
 FunctionParameter <- p:(LabeledNameParam / NameParam / DiscardParam) typ:TypeAnnotation? {
@@ -115,7 +155,11 @@ FunctionParameter <- p:(LabeledNameParam / NameParam / DiscardParam) typ:TypeAnn
 	return param, nil
 }
 TypeAnnotation <- ":" _ t:Type { return t, nil }
-Type <- Identifier // Simplified for now
+Type <- name:UpName (_ gp:GenericParams)? {
+    return name.(string), nil
+}
+GenericParams <- "(" _ first:(GenericParam) rest:(_ "," _ GenericParam)* _ ","? ")" { return nil, nil }
+GenericParam <- Name / UpName { return nil, nil }
 LabeledNameParam <- label:Label _ name:Identifier {
 	return Parameter{Label: label.(string), Name: name.(Identifier).Name}, nil
 }
@@ -125,7 +169,7 @@ Identifier <- Name { return Identifier{Name: string(c.text)}, nil }
 Discard <- DiscardName { return Discard{Name: string(c.text)}, nil }
 Label <- Name { return string(c.text), nil }
 
-IgnoredContent <- (!("import" / "pub" __ "fn" __ "main") .)+ { return nil, nil }
+IgnoredContent <- (!("import" / "@external(" / "fn" __ / "pub" __ "fn" __  ) .)+ { return nil, nil }
 IgnoredBlock <- "{" (IgnoredBlock / !"}" .)* "}" { return nil, nil }
 
 // -----------------------------------------------------------------------------

@@ -13,13 +13,14 @@ def _gleam_binary_impl(ctx):
     lib_inputs, lib_path = declare_lib_files_for_dep(ctx, ctx.attr.deps)
 
     outputs = declare_outputs(ctx, ctx.files.srcs, is_binary = True, main_module = main_module)
-
+ 
     working_root = paths.dirname(inputs.toml_file.path)
     gleam_compiler = get_gleam_compiler(ctx)
     ctx.actions.run_shell(
         inputs = inputs.sources + lib_inputs + [gleam_compiler],
         outputs = outputs.all_files_include_binary,
         use_default_shell_env = True,
+        mnemonic = "GleamBinaryCompile",
         command = """
             COMPILER="$(pwd)/%s" &&
             cd %s &&
@@ -57,9 +58,8 @@ def _gleam_binary_impl(ctx):
     runfiles = ctx.runfiles(files = ctx.files.data + outputs.beam_files)
     transitive_runfiles = []
     for runfiles_attr in (
-        ctx.attr.srcs,
         ctx.attr.data,
-        ctx.attr.deps,
+        # ctx.attr.deps,
     ):
         for target in runfiles_attr:
             transitive_runfiles.append(target[DefaultInfo].default_runfiles)
@@ -67,11 +67,23 @@ def _gleam_binary_impl(ctx):
 
     # Symlinks needed .beam dependencies for target executable to run..
     dep_beam_symlinks = []
-    for dep_beam_modules in [dep[GleamErlPackageInfo].beam_module for dep in ctx.attr.deps]:
+    seen_beam_module = set()
+    for package in [dep[GleamErlPackageInfo] for dep in ctx.attr.deps]:
+        dep_beam_modules = package.beam_module
         for dep_beam_module in dep_beam_modules.to_list():
-            dep_beam = ctx.actions.declare_file(paths.basename(dep_beam_module.path))
-            ctx.actions.symlink(output = dep_beam, target_file = dep_beam_module)
-            dep_beam_symlinks.append(dep_beam)
+            dir = paths.dirname(paths.relativize(dep_beam_module.path, ctx.bin_dir.path))
+            # For non-root beam modules, carry it to the current directory.
+            if dir != "":
+                dep_beam_path = paths.basename(dep_beam_module.path)
+                if dep_beam_path in seen_beam_module:
+                    fail("""Beam module {MODULE} duplicated, probably because of Erlang FFI has 
+                        conflicting name. Note that gleam_erl_library() does not create 
+                        namespace like a Gleam module.""".format(MODULE = dep_beam))
+                else:
+                    seen_beam_module.add(dep_beam_path)
+                    dep_beam = ctx.actions.declare_file(paths.basename(dep_beam_module.path))
+                    ctx.actions.symlink(output = dep_beam, target_file = dep_beam_module)
+                    dep_beam_symlinks.append(dep_beam)
     runfiles = runfiles.merge(ctx.runfiles(files = dep_beam_symlinks))
 
     return [
@@ -114,6 +126,6 @@ gleam_binary = rule(
         ),
     },
     toolchains = [
-        "//gleam_tools:toolchain_type"
-    ]
+        "//gleam_tools:toolchain_type",
+    ],
 )

@@ -202,7 +202,7 @@
     "@@rules_gleam+//:extensions.bzl%gleam": {
       "general": {
         "bzlTransitiveDigest": "Ec1gIIx5mz/v6opPA32bi2B82JY5KfBL4EGso3q30XA=",
-        "usagesDigest": "xYw9LHr72laA0tHbulH+MlcM7/HTOm2kzZchZdCAmQs=",
+        "usagesDigest": "eCF9Xgvmolqavo/+NEFPDzPm3kbz5vQ1LvCINESDNCg=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},

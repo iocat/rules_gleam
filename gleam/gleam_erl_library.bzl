@@ -1,20 +1,22 @@
+# Erl library for interoping with erlang via
+# 
+# @external(erlang, "erl", "function")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//gleam:build.bzl", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
-def _gleam_library_impl(ctx):
+def _gleam_erl_library_impl(ctx):
     inputs = declare_inputs(ctx, ctx.files.srcs)
-    lib_inputs, lib_path = declare_lib_files_for_dep(ctx, ctx.attr.deps)
-
     outputs = declare_outputs(ctx, ctx.files.srcs, is_binary = False, main_module = "")
+    _, lib_path = declare_lib_files_for_dep(ctx, []) # no deps, we need the path.
 
     working_root = paths.dirname(inputs.toml_file.path)
     gleam_compiler = get_gleam_compiler(ctx)
     ctx.actions.run_shell(
-        inputs = inputs.sources + lib_inputs + [gleam_compiler],
+        inputs = inputs.sources + [gleam_compiler],
         outputs = outputs.all_files,
         use_default_shell_env = True,
-        mnemonic="GleamLibraryCompile",
+        mnemonic="GleamErlLibraryCompile",
         command = """
             COMPILER="$(pwd)/%s" &&
             cd %s &&
@@ -29,7 +31,6 @@ def _gleam_library_impl(ctx):
     transitive_runfiles = []
     for runfiles_attr in (
         ctx.attr.data,
-        ctx.attr.deps,
     ):
         for target in runfiles_attr:
             transitive_runfiles.append(target[DefaultInfo].default_runfiles)
@@ -39,26 +40,22 @@ def _gleam_library_impl(ctx):
         DefaultInfo(files = depset(outputs.erl_mods + outputs.beam_files + outputs.cache_files), runfiles = runfiles),
         GleamErlPackageInfo(
             module_names = outputs.module_names,
-            erl_module = depset(direct = outputs.erl_mods, transitive = [dep[GleamErlPackageInfo].erl_module for dep in ctx.attr.deps]),
-            beam_module = depset(direct = outputs.beam_files, transitive = [dep[GleamErlPackageInfo].beam_module for dep in ctx.attr.deps]),
-            gleam_cache = depset(direct = outputs.cache_files, transitive = [dep[GleamErlPackageInfo].gleam_cache for dep in ctx.attr.deps]),
+            erl_module = depset(direct = outputs.erl_mods),
+            beam_module = depset(direct = outputs.beam_files),
+            gleam_cache = depset(direct = outputs.cache_files),
         ),
     ]
 
 # Provides GleamErlPackageInfo and DefaultInfo that includes targets that are .beam, .erl sources.
-gleam_library = rule(
-    implementation = _gleam_library_impl,
+gleam_erl_library = rule(
+    implementation = _gleam_erl_library_impl,
     attrs = {
         "srcs": attr.label_list(
             doc = "The list of gleam module files to compile under the current package.",
             mandatory = True,
-            allow_files = [".gleam"],
+            allow_files = [".erl"],
         ),
         "data": attr.label_list(doc = "The data available at runtime", allow_files = True),
-        "deps": attr.label_list(
-            doc = "The list of dependent gleam modules.",
-            providers = [GleamErlPackageInfo],
-        ),
     },
     toolchains = [
         "//gleam_tools:toolchain_type"

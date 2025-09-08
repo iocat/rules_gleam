@@ -13,12 +13,13 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	_ "github.com/kr/pretty"
 )
 
 var (
 	gleamExt = ".gleam"
+	erlExt   = ".erl"
 
-	errNotFound = errors.New("rule not found")
 	errSkipImport = errors.New("skip import")
 )
 
@@ -27,17 +28,19 @@ func (*gleamLanguage) Name() string { return "gleam" }
 // Returns the Gleam specific import path for the rule.
 // These are all of the Gleam modules, declared in srcs.
 func (g *gleamLanguage) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
-	if !isGleamLibrary(r) {
+	if !isGleamLibrary(r){
 		return nil
 	}
-	srcs := r.AttrStrings("srcs")
-	imports := make([]resolve.ImportSpec, len(srcs))
-	for i, src := range r.AttrStrings("srcs") {
-		if path.Ext(src) != ".gleam" {
-			continue
+
+	imports := []resolve.ImportSpec{}
+	for _, src := range r.AttrStrings("srcs") {
+		if path.Ext(src) == gleamExt {
+			imports = append(imports, resolve.ImportSpec{Lang: g.Name(), Imp: path.Join(f.Pkg, strings.TrimSuffix(src, gleamExt))})
+		} else if path.Ext(src) == erlExt {
+			imports = append(imports, resolve.ImportSpec{Lang: g.Name(), Imp: strings.Join([]string{"erl", strings.TrimSuffix(src, erlExt)}, ":")})
 		}
-		imports[i] = resolve.ImportSpec{Lang: g.Name(), Imp: path.Join(f.Pkg, strings.TrimSuffix(src, gleamExt))}
 	}
+	
 	return imports
 }
 
@@ -62,14 +65,14 @@ func (g *gleamLanguage) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *rep
 		if err == errSkipImport {
 			// If resolveGleam returns errSkipImport, skip this import.
 			continue
-		}else if err != nil {
+		} else if err != nil {
 			// If resolveGleam has any other error, log it.
 			log.Print(err)
-		}else {
+		} else {
 			var label label.Label
 			if depLabel.Pkg == from.Pkg && depLabel.Repo == from.Repo {
 				label = depLabel.Rel(depLabel.Repo, depLabel.Pkg)
-			}else {
+			} else {
 				label = depLabel.Abs(depLabel.Repo, depLabel.Pkg)
 			}
 			depSet[label.String()] = true
@@ -95,13 +98,12 @@ func isSelfImport(r *rule.Rule, f label.Label, imp string) bool {
 }
 
 func (g *gleamLanguage) resolveGleam(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
-
-	if(isSelfImport(r, from, imp)) {
+	if isSelfImport(r, from, imp) {
 		return label.NoLabel, errSkipImport
 	}
 	results := ix.FindRulesByImportWithConfig(c, resolve.ImportSpec{Lang: g.Name(), Imp: imp}, g.Name())
 	if len(results) == 0 {
-		return label.NoLabel, errNotFound
+		return label.NoLabel, fmt.Errorf("no rule may be imported with %q from package %s", imp, from)
 	} else if len(results) > 1 {
 		return label.NoLabel, fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", results[0].Label, results[1].Label, imp, from)
 	}

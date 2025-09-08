@@ -28,6 +28,14 @@ func asSet[K comparable](things []K) map[K]bool {
 	return result
 }
 
+func collect[K comparable, V any](things map[K]V) []K {
+	result := make([]K, 0, len(things))
+	for k := range things {
+		result = append(result, k)
+	}
+	return result
+}
+
 func isGleamLibrary(r *rule.Rule) bool {
-	return r.Kind() == "gleam_library"
+	return r.Kind() == "gleam_library" || r.Kind() == "gleam_erl_library"
 }

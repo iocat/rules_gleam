@@ -28,6 +28,13 @@ var gleamKinds = map[string]rule.KindInfo{
 		},
 		ResolveAttrs: map[string]bool{"deps": true},
 	},
+	"gleam_erl_library": {
+		MatchAttrs:    []string{"srcs"},
+		NonEmptyAttrs: map[string]bool{"srcs": true},
+		MergeableAttrs: map[string]bool{
+			"srcs":                true,
+		},
+	},
 }
 
 func (g *gleamLanguage) Kinds() map[string]rule.KindInfo {
@@ -46,6 +53,7 @@ func (g *gleamLanguage) ApparentLoads(moduleToApparentName func(string) string) 
 			Symbols: []string{
 				"gleam_library",
 				"gleam_binary",
+				"gleam_erl_library",
 			},
 		},
 	}
