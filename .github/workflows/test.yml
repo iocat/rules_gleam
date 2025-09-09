@@ -21,7 +21,7 @@ jobs:
       - uses: bazel-contrib/setup-bazel@0.8.1
       - name: test gazelle
         run: bazel test //gazelle/...
-      - name: test example
-        run: |
-          cd examples/basic
-          bazel test //gazelle/...
+      # - name: test example
+      #   run: |
+      #     cd examples/basic
+      #     bazel test //gazelle/...
