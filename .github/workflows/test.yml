@@ -18,6 +18,10 @@ jobs:
           gleam-version: "1.12.0"
           rebar3-version: "3"
           # elixir-version: "1"
-      - run: gleam deps download
-      - run: gleam test
-      - run: gleam format --check src test
+      - uses: bazel-contrib/setup-bazel@0.8.1
+      - name: test gazelle
+        run: bazel test //gazelle/...
+      - name: test example
+        run: |
+          cd examples/basic
+          bazel test //gazelle/...
