@@ -46,6 +46,23 @@ func makeImportStmt(module string, unqualifies ...string) Node {
 	return Statement(imp)
 }
 
+func makeParameters(params ...string) []Parameter {
+	if len(params)%2 != 0 {
+		panic("expected an even number of params")
+	}
+
+	var p []Parameter
+	for i := 0; i < len(params); i += 2 {
+		p = append(p, makeParameter(params[i], params[i+1]))
+	}
+	return p
+}
+
+func makeParameter(name, typ string) Parameter {
+	return Parameter{Name: name, Type: string(typ)}
+}
+
+
 func TestParser(t *testing.T) {
 	testCases := []struct {
 		desc  string
@@ -249,20 +266,4 @@ pub fn main() {
 			t.Fatalf("desc: (%s)\n(-want, +got)=\n%s", tc.desc, diff)
 		}
 	}
-}
-
-func makeParameters(params ...string) []Parameter {
-	if len(params)%2 != 0 {
-		panic("expected an even number of params")
-	}
-
-	var p []Parameter
-	for i := 0; i < len(params); i += 2 {
-		p = append(p, makeParameter(params[i], params[i+1]))
-	}
-	return p
-}
-
-func makeParameter(name, typ string) Parameter {
-	return Parameter{Name: name, Type: string(typ)}
 }
