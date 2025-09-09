@@ -17,7 +17,7 @@ import (
 )
 
 func TestGenerateRules(t *testing.T) {
-	testDir := "testdata"
+	testDir := "gentestdata"
 	c, langs, cexts := testConfig(t, "-build_file_name=BUILD.old", "-repo_root="+testDir)
 
 	configFile, err := rule.LoadData(filepath.FromSlash("BUILD.config"), "config", []byte(`

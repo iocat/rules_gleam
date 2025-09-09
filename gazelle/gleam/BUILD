@@ -43,7 +43,7 @@ go_test(
         "language_generate_rules_test.go",
         "resolver_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(["gentestdata/**"]),
     embed = [":gleam"],
     deps = [
         "@com_github_bazelbuild_buildtools//build",
