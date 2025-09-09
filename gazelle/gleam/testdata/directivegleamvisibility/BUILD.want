@@ -1,0 +1,11 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_library")
+
+gleam_library(
+    name = "directivegleamvisibility",
+    srcs = ["test.gleam"],
+    _gazelle_imports = [],
+    visibility = [
+        "//example.com/repo:__subpackages__",
+        "//example.com/repo2:__subpackages__",
+    ],
+)

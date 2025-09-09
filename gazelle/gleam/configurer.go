@@ -13,6 +13,14 @@ type GleamConfig struct {
 	gleamVisibility []string
 }
 
+func (c *GleamConfig) clone() *GleamConfig {
+	visibility := make([]string, len(c.gleamVisibility))
+	copy(visibility, c.gleamVisibility)
+	return &GleamConfig{
+		gleamVisibility: visibility,
+	}
+}
+
 func (g *gleamLanguage) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	pc := &GleamConfig{}
 	c.Exts[languageName] = pc
@@ -28,8 +36,21 @@ func (g *gleamLanguage) KnownDirectives() []string {
 	}
 }
 
+// Configure implements Language.Configure.
+//
+// It reads the "gleam_visibility" directive, which specifies the visibility
+// of the target. Multiple values are allowed.
+//
+// This is called per directory, child directory inherits config from the parent's.
 func (g *gleamLanguage) Configure(c *config.Config, rel string, f *rule.File) {
-	config := GetGleamConfig(c)
+	var config *GleamConfig
+	if c, ok := c.Exts[languageName]; !ok {
+		config = &GleamConfig{}
+	}else {
+		config = c.(*GleamConfig).clone()
+	}
+	c.Exts[languageName] = config
+
 	if f != nil {
 		for _, d := range f.Directives {
 			switch d.Key {

@@ -38,15 +38,21 @@ gazelle_binary(
 
 go_test(
     name = "gleam_test",
-    srcs = ["language_generate_rules_test.go"],
+    srcs = [
+        "config_test.go",
+        "language_generate_rules_test.go",
+        "resolver_test.go",
+    ],
     data = glob(["testdata/**"]),
     embed = [":gleam"],
     deps = [
         "@com_github_bazelbuild_buildtools//build",
         "@com_github_google_go_cmp//cmp",
         "@gazelle//config",
+        "@gazelle//label",
         "@gazelle//language",
         "@gazelle//merger",
+        "@gazelle//repo",
         "@gazelle//resolve",
         "@gazelle//rule",
         "@gazelle//testtools",

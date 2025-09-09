@@ -78,6 +78,7 @@ func (g *gleamLanguage) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *rep
 			depSet[label.String()] = true
 		}
 	}
+
 	if len(depSet) != 0 {
 		// If there are dependencies, set the deps attribute.
 		deps := make([]string, 0, len(depSet))

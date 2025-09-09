@@ -1,0 +1,4 @@
+package(default_visibility = ["//visibility:public"])
+
+# gazelle:gleam_visibility //example.com/repo:__subpackages__
+# gazelle:gleam_visibility //example.com/repo2:__subpackages__

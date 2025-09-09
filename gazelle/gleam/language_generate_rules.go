@@ -40,7 +40,8 @@ type gleamModuleBundle struct {
 	name string
 	kind ruleKind
 	// Maps to fully qualified module names.
-	modules map[string]gleamModuleInfo
+	modules        map[string]gleamModuleInfo
+	mainModuleName string
 
 	rel string
 	c   *config.Config
@@ -140,22 +141,27 @@ func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 	internalModule := gmb.internalModule()
 	rules := []*rule.Rule{}
 	r := rule.NewRule(string(gmb.kind), gmb.name)
-	switch gmb.kind {
-	case ruleKindBin:
-		r.SetAttr("visibility", []string{"//visibility:private"})
-	case ruleKindLib, ruleKindErlLib:
-		r.SetAttr("visibility", gmb.nonInternalVisibility())
-	}
 	r.SetAttr("srcs", filter(gmb.sources(), func(m string) bool {
 		return internalModule == nil || m != internalModule.file
 	}))
-	rules = append(rules, r)
+	switch gmb.kind {
+	case ruleKindBin:
+		r.SetAttr("visibility", []string{"//visibility:private"})
+		// If bin has multiple sources, add a main_module to identify 
+		// which module declare the main function.
+		if gmb.mainModuleName != "" && len(r.AttrStrings("srcs")) > 1 {
+			r.SetAttr("main_module", gmb.mainModuleName)
+		}
+	case ruleKindLib, ruleKindErlLib:
+		r.SetAttr("visibility", gmb.nonInternalVisibility())
+	}
 
+	rules = append(rules, r)
 	if internalModule != nil {
 		internalR := rule.NewRule("gleam_library", gmb.name+"_internal")
 		internalR.SetAttr("srcs", []string{internalModule.file})
 		internalR.SetAttr("visibility", []string{fmt.Sprintf("//%s:__subpackages__", gmb.rel)})
-		
+
 		rules = append(rules, internalR)
 	}
 
@@ -205,6 +211,7 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 				if len(name) == 0 {
 					gleamBundle.name = "bin"
 				}
+				gleamBundle.mainModuleName = module.moduleName
 				gleamBundle.kind = ruleKindBin
 			}
 		case erlExt:

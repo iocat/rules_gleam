@@ -1,0 +1,18 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_binary")
+
+gleam_binary(
+    name = "multiplegleamonemain",
+    srcs = [
+        "character.gleam",
+        "faction.gleam",
+        "file.gleam",
+        "guild.gleam",
+    ],
+    _gazelle_imports = [
+        "multiplegleamonemain/character",
+        "multiplegleamonemain/faction",
+        "multiplegleamonemain/guild",
+    ],
+    main_module = "file",
+    visibility = ["//visibility:private"],
+)
