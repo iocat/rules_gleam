@@ -7,6 +7,7 @@ require (
 	github.com/bazelbuild/buildtools v0.0.0-20240918101019-be1c24cc9a44
 	github.com/google/go-cmp v0.6.0
 	github.com/kr/pretty v0.3.1
+	github.com/lithammer/dedent v1.1.0
 )
 
 require (

@@ -14,6 +14,7 @@ import (
 	bzl "github.com/bazelbuild/buildtools/build"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/lithammer/dedent"
 )
 
 type buildFile struct {
@@ -42,24 +43,24 @@ var testCases = []resolveTestCase{
 		old: buildFile{
 			pkg: "foo",
 			content: `
-gleam_library(
-	name = "foo",
-	srcs = [
-		"foo.gleam",
-		"bar.gleam"
-	],
-	_gazelle_imports = ["foo/foo"],
-)
+				gleam_library(
+					name = "foo",
+					srcs = [
+						"foo.gleam",
+						"bar.gleam"
+					],
+					_gazelle_imports = ["foo/foo"],
+				)
 `,
 		},
 		want: `
-gleam_library(
-	name = "foo",
-	srcs = [
-		"bar.gleam",
-		"foo.gleam",
-	],
-)
+				gleam_library(
+					name = "foo",
+					srcs = [
+						"bar.gleam",
+						"foo.gleam",
+					],
+				)
 `,
 	},
 	{
@@ -67,38 +68,197 @@ gleam_library(
 		old: buildFile{
 			pkg: "foo",
 			content: `
-gleam_library(
-	name = "bar",
-	srcs = [
-		"bar.gleam"
-	],
-)
+				gleam_library(
+					name = "bar",
+					srcs = [
+						"bar.gleam"
+					],
+				)
 
-gleam_binary(
-	name = "foo",
-	srcs = [
-		"foo.gleam",
-	],
-	_gazelle_imports = ["foo/bar"],
-)
+				gleam_binary(
+					name = "foo",
+					srcs = [
+						"foo.gleam",
+					],
+					_gazelle_imports = ["foo/bar"],
+				)
 `,
 		},
 		want: `
-gleam_library(
-	name = "bar",
-	srcs = [
-		"bar.gleam",
-	],
-)
+				gleam_library(
+					name = "bar",
+					srcs = [
+						"bar.gleam",
+					],
+				)
 
-gleam_binary(
-	name = "foo",
-	srcs = [
-		"foo.gleam",
-	],
-	deps = [":bar"],
-)
+				gleam_binary(
+					name = "foo",
+					srcs = [
+						"foo.gleam",
+					],
+					deps = [":bar"],
+				)
 `,
+	},
+	{
+		desc: "import from another package",
+		index: []buildFile{
+			{
+				pkg: "foo/bar",
+				content: `
+					gleam_library(
+						name = "bar",
+						srcs = [
+							"bar.gleam"
+						],
+					)
+`,
+			},
+			{
+				pkg: "test",
+				content: `
+					gleam_library(
+						name = "test",
+						srcs = [
+							"a.gleam",
+							"b.gleam",
+						],
+						deps = ["//foo/bar"],
+					)
+`,
+			},
+		},
+		old: buildFile{
+			pkg: "foo",
+			content: `
+					gleam_library(
+						name = "bar",
+						srcs = [
+							"bar.gleam"
+						],
+						visibility = ["//visibility:public"],
+						_gazelle_imports = ["foo/bar/bar", "test/a", "test/b"],
+					)
+
+					gleam_library(
+						name = "foo",
+						srcs = [
+							"foo.gleam"
+						],
+						visibility = ["//visibility:private"],
+						_gazelle_imports = ["test/a", "test/b"],
+					)
+	`,
+		},
+		want: `
+					gleam_library(
+						name = "bar",
+						srcs = [
+							"bar.gleam",
+						],
+						visibility = ["//visibility:public"],
+						deps = [
+							"//foo/bar",
+							"//test",
+						],
+					)
+
+					gleam_library(
+						name = "foo",
+						srcs = [
+							"foo.gleam",
+						],
+						visibility = ["//visibility:private"],
+						deps = ["//test"],
+					)
+`,
+	},
+	{
+		desc: "mixed concept",
+		index: []buildFile{
+			{
+				pkg: "too/many/level/deep",
+				content: `
+					gleam_library(
+						name = "deep",
+						srcs = [
+							"bar.gleam",
+							"level1.gleam",
+							"level2.gleam",
+							"level3.gleam",
+						],
+						visibility = ["//visibility:public"],
+					)
+				`,
+			},
+			{
+				pkg: "test/internal",
+				content: `
+					gleam_library(
+						name = "internal",
+						srcs = [
+							"a.gleam",
+							"b.gleam",
+						],
+						visibility = ["//test:__subpackages__"],
+						deps = ["//too/many/level/deep"],
+					)
+				`,
+			},
+		},
+		old: buildFile{
+			pkg: "test",
+			content: `
+					gleam_library(
+						name = "test_internal",
+						srcs = [
+							"internal.gleam",
+						],
+					)
+
+					gleam_binary(
+						name = "test",
+						srcs = [
+							"c.gleam",
+							"d.gleam",
+						],
+						main_module = "c",
+						visibility = ["//visibility:private"],
+						_gazelle_imports = [
+							"test/internal",
+							"too/many/level/deep/level1",
+							"too/many/level/deep/level2",
+							"too/many/level/deep/level3",
+							"test/internal/a",
+							"test/internal/b"
+						],
+					)
+			`,
+		},
+		want: `
+					gleam_library(
+						name = "test_internal",
+						srcs = [
+							"internal.gleam",
+						],
+					)
+
+					gleam_binary(
+						name = "test",
+						srcs = [
+							"c.gleam",
+							"d.gleam",
+						],
+						main_module = "c",
+						visibility = ["//visibility:private"],
+						deps = [
+							":test_internal",
+							"//test/internal",
+							"//too/many/level/deep",
+						],
+					)
+			`,
 	},
 }
 
@@ -120,7 +280,7 @@ func TestResolveGleam(t *testing.T) {
 
 			for _, bf := range testCase.index {
 				buildPath := filepath.Join(filepath.FromSlash(bf.pkg), "BUILD.bazel")
-				f, err := rule.LoadData(buildPath, bf.pkg, []byte(bf.content))
+				f, err := rule.LoadData(buildPath, bf.pkg, []byte(dedent.Dedent(bf.content)))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -134,7 +294,7 @@ func TestResolveGleam(t *testing.T) {
 				}
 			}
 			buildPath := filepath.Join(filepath.FromSlash(testCase.old.pkg), "BUILD.bazel")
-			f, err := rule.LoadData(buildPath, testCase.old.pkg, []byte(testCase.old.content))
+			f, err := rule.LoadData(buildPath, testCase.old.pkg, []byte(dedent.Dedent(testCase.old.content)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -149,7 +309,7 @@ func TestResolveGleam(t *testing.T) {
 			}
 			f.Sync()
 			got := strings.TrimSpace(string(bzl.Format(f.File)))
-			want := strings.ReplaceAll(strings.TrimSpace(testCase.want), "\t", "    ")
+			want := strings.ReplaceAll(strings.TrimSpace(dedent.Dedent(testCase.want)), "\t", "    ")
 			diff := cmp.Diff(want, got)
 			if diff != "" {
 				t.Errorf("(-want, +got):%s", diff)
