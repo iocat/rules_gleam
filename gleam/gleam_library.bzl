@@ -10,19 +10,20 @@ def _gleam_library_impl(ctx):
 
     working_root = paths.dirname(inputs.toml_file.path)
     gleam_compiler = get_gleam_compiler(ctx)
-    ctx.actions.run_shell(
-        inputs = inputs.sources + lib_inputs + [gleam_compiler],
-        outputs = outputs.all_files,
-        use_default_shell_env = True,
-        mnemonic="GleamLibraryCompile",
-        command = """
-            COMPILER="$(pwd)/%s" &&
-            cd %s &&
-            $COMPILER compile-package --package '.' --target erlang --out '.' --lib %s &&
-            mv ./%s/* ./ &&
-            mv ./ebin/* ./
-        """ % (gleam_compiler.path, working_root, lib_path, GLEAM_ARTEFACTS_DIR),
-    )
+    if len(outputs.all_files):
+        ctx.actions.run_shell(
+            inputs = inputs.sources + lib_inputs + [gleam_compiler],
+            outputs = outputs.all_files,
+            use_default_shell_env = True,
+            mnemonic="GleamLibraryCompile",
+            command = """
+                COMPILER="$(pwd)/%s" &&
+                cd %s &&
+                $COMPILER compile-package --package '.' --target erlang --out '.' --lib %s &&
+                mv ./%s/* ./ &&
+                mv ./ebin/* ./
+            """ % (gleam_compiler.path, working_root, lib_path, GLEAM_ARTEFACTS_DIR),
+        )
 
     # Accumulate runfiles.
     runfiles = ctx.runfiles(files = ctx.files.data + outputs.beam_files)

@@ -18,7 +18,8 @@
     "https://bcr.bazel.build/modules/bazel_features/1.18.0/MODULE.bazel": "1be0ae2557ab3a72a57aeb31b29be347bcdc5d2b1eb1e70f39e3851a7e97041a",
     "https://bcr.bazel.build/modules/bazel_features/1.19.0/MODULE.bazel": "59adcdf28230d220f0067b1f435b8537dd033bfff8db21335ef9217919c7fb58",
     "https://bcr.bazel.build/modules/bazel_features/1.30.0/MODULE.bazel": "a14b62d05969a293b80257e72e597c2da7f717e1e69fa8b339703ed6731bec87",
-    "https://bcr.bazel.build/modules/bazel_features/1.30.0/source.json": "b07e17f067fe4f69f90b03b36ef1e08fe0d1f3cac254c1241a1818773e3423bc",
+    "https://bcr.bazel.build/modules/bazel_features/1.35.0/MODULE.bazel": "3d9393e5317df8afcfc509458591874ea734fa68ecbdd64fbd6c2c0cbe399526",
+    "https://bcr.bazel.build/modules/bazel_features/1.35.0/source.json": "c61e98cb3573ce0b8d69eb77c652ab10545375e387e45005e7f8e84792472b09",
     "https://bcr.bazel.build/modules/bazel_features/1.4.1/MODULE.bazel": "e45b6bb2350aff3e442ae1111c555e27eac1d915e77775f6fdc4b351b758b5d7",
     "https://bcr.bazel.build/modules/bazel_features/1.9.1/MODULE.bazel": "8f679097876a9b609ad1f60249c49d68bfab783dd9be012faf9d82547b14815a",
     "https://bcr.bazel.build/modules/bazel_skylib/1.0.3/MODULE.bazel": "bcb0fd896384802d1ad283b4e4eb4d718eebd8cb820b0a2c3a347fb971afd9d8",
@@ -163,7 +164,7 @@
     "@@rules_erlang+//bzlmod:extensions.bzl%erlang_config": {
       "general": {
         "bzlTransitiveDigest": "LnWmtqo2JKUEspBWbQXkJ+zlKL3PyPctpHHyK0/U4MI=",
-        "usagesDigest": "QQi0Bdxbm7IfgsIrGSUGNEZX3cEmmBS0uCLOvAE/Nlc=",
+        "usagesDigest": "2mlGUm86FPZOH0K+ht1JoV81hZZCZOrHNJzRjlwuZQo=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -197,66 +198,6 @@
             "bazel_tools"
           ]
         ]
-      }
-    },
-    "@@rules_gleam+//:extensions.bzl%gleam": {
-      "general": {
-        "bzlTransitiveDigest": "Ec1gIIx5mz/v6opPA32bi2B82JY5KfBL4EGso3q30XA=",
-        "usagesDigest": "eCF9Xgvmolqavo/+NEFPDzPm3kbz5vQ1LvCINESDNCg=",
-        "recordedFileInputs": {},
-        "recordedDirentsInputs": {},
-        "envVariables": {},
-        "generatedRepoSpecs": {
-          "gleam_compiler_x86_64_apple_darwin": {
-            "repoRuleId": "@@rules_gleam+//gleam_tools:repositories.bzl%gleam_toolchain_repository",
-            "attributes": {
-              "platform": "x86_64-apple-darwin",
-              "version": "v1.12.0"
-            }
-          },
-          "gleam_compiler_aarch64_apple_darwin": {
-            "repoRuleId": "@@rules_gleam+//gleam_tools:repositories.bzl%gleam_toolchain_repository",
-            "attributes": {
-              "platform": "aarch64-apple-darwin",
-              "version": "v1.12.0"
-            }
-          },
-          "gleam_compiler_aarch64_pc_windows_msvc": {
-            "repoRuleId": "@@rules_gleam+//gleam_tools:repositories.bzl%gleam_toolchain_repository",
-            "attributes": {
-              "platform": "aarch64-pc-windows-msvc",
-              "version": "v1.12.0"
-            }
-          },
-          "gleam_compiler_x86_64_pc_windows_msvc": {
-            "repoRuleId": "@@rules_gleam+//gleam_tools:repositories.bzl%gleam_toolchain_repository",
-            "attributes": {
-              "platform": "x86_64-pc-windows-msvc",
-              "version": "v1.12.0"
-            }
-          },
-          "gleam_compiler_aarch64_unknown_linux_musl": {
-            "repoRuleId": "@@rules_gleam+//gleam_tools:repositories.bzl%gleam_toolchain_repository",
-            "attributes": {
-              "platform": "aarch64-unknown-linux-musl",
-              "version": "v1.12.0"
-            }
-          },
-          "gleam_compiler_x86_64_unknown_linux_musl": {
-            "repoRuleId": "@@rules_gleam+//gleam_tools:repositories.bzl%gleam_toolchain_repository",
-            "attributes": {
-              "platform": "x86_64-unknown-linux-musl",
-              "version": "v1.12.0"
-            }
-          },
-          "gleam_toolchains": {
-            "repoRuleId": "@@rules_gleam+//gleam_tools:repositories.bzl%toolchains_repositories",
-            "attributes": {
-              "toolchain_repo_prefix": "gleam_compiler_"
-            }
-          }
-        },
-        "recordedRepoMappingEntries": []
       }
     },
     "@@rules_kotlin+//src/main/starlark/core/repositories:bzlmod_setup.bzl%rules_kotlin_extensions": {

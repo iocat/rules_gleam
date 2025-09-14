@@ -22,3 +22,38 @@ VERSIONS = {
         },
     },
 }
+
+# MAKE THE LATEST VERSION.
+
+def get_key(semver):
+    """
+    Get the version, major, minor, and release candidate count from the given semantic version.
+
+    Args:
+        semver: The semantic version.
+
+    Returns:
+        version (int): The version.
+        major (int): The major.
+        minor (int): The minor.
+        rc (None): The release candidate count, if any.
+    """
+    splitted = semver[1:].split(".")
+    version = int(splitted[0])
+    major = int(splitted[1])
+    minor_parts = splitted[2].split("-")
+    minor = int(minor_parts[0])
+    rc = None
+    if len(minor_parts) > 1:
+        rc = minor_parts[1]
+
+    return (version, major, minor, rc)
+
+semvers = sorted(VERSIONS.keys(), key = get_key, reverse = True)
+
+VERSIONS["latest"] = {k: v for k, v in VERSIONS[semvers[0]].items()}
+VERSIONS["latest"]["download_url_template"] = VERSIONS["latest"]["download_url_template"].format(
+    version = semvers[0],
+    # No partial template ;(
+    platform = "{platform}"
+)

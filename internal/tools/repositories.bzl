@@ -1,0 +1,1 @@
+# Compile the binaries under tools to be available in a module extension.

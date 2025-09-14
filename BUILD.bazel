@@ -1,3 +1,7 @@
+# BUILD.bazel
+# gazelle:exclude examples
+# gazelle:exclude gazelle/gleam/gentestdata
+
 package(
     default_visibility = ["//visbility:public"],
 )

@@ -14,10 +14,7 @@ gleam_binary(
     name = "example",
     srcs = ["example.gleam"],
     visibility = ["//visibility:private"],
-    deps = [
-        ":example_ffi",
-        "//demo",
-    ],
+    deps = [":example_ffi"],
 )
 
 gleam_erl_library(
