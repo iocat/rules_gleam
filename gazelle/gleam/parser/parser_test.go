@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -46,22 +48,29 @@ func makeImportStmt(module string, unqualifies ...string) Node {
 	return Statement(imp)
 }
 
-func makeParameters(params ...string) []Parameter {
+func makeParameters(params ...interface{}) []Parameter {
 	if len(params)%2 != 0 {
 		panic("expected an even number of params")
 	}
 
 	var p []Parameter
 	for i := 0; i < len(params); i += 2 {
-		p = append(p, makeParameter(params[i], params[i+1]))
+		p = append(p, makeParameter(params[i].(string), params[i+1]))
 	}
 	return p
 }
 
-func makeParameter(name, typ string) Parameter {
-	return Parameter{Name: name, Type: string(typ)}
+func makeParameter(name string, typ interface{}) Parameter {
+	var label string = ""
+	if strings.Contains(name, " ") {
+		label = name[:strings.Index(name, " ")]
+		name = name[strings.Index(name, " ")+1:]
+	}
+	if typ == nil {
+		return Parameter{Label: label, Name: name}
+	}
+	return Parameter{Label: label, Name: name, Type: string(typ.(string))}
 }
-
 
 func TestParser(t *testing.T) {
 	testCases := []struct {
@@ -132,6 +141,52 @@ pub fn main() {
 						{TargetLang: "javascript", Module: "squirrel_ffi.mjs", Function: "woah"},
 					}, string("Nil")),
 					makeFunctionStmt(true, "main", nil, nil, nil),
+				},
+			},
+		},
+		{
+			desc: "with lambda",
+			input: `
+pub fn main(test: fn(Int) -> Int) {
+	echo "Hello, World!"
+}
+
+/// let result = decode.run(data, decoder)
+/// assert result == Ok(SignUp(name: "Lucy", email: "lucy@example.com"))
+///
+///
+pub fn subfield(
+  field_path: List(name),
+  field_decoder: Decoder(t),
+  next: fn(t) -> Decoder(final),
+) -> Decoder(final) {
+	Decoder(function: fn(data) {
+    let #(out, errors1) =
+      index(field_path, [], field_decoder.function, data, fn(data, position) {
+        let #(default, _) = field_decoder.function(data)
+        #(default, [DecodeError("Field", "Nothing", [])])
+        |> push_path(list.reverse(position))
+      })
+    let #(out, errors2) = next(out).function(data)
+    #(out, list.append(errors1, errors2))
+  })
+}
+
+fn fold_dict(
+  acc: #(Dict(k, v), dynamic.List(dynamic.DecodeError)),
+  key: dynamic.Dynamic,
+  value: fn(),
+  key_decoder: fn(Dynamic) -> #(k, List(DecodeError)),
+  value_decoder: fn(Dynamic) -> #(v, List(DecodeError)),
+) -> #(Dict(k, v), List(DecodeError)) {}
+
+
+`,
+			ast: SourceFile{
+				Statements: []Node{
+					makeFunctionStmt(true, "main", makeParameters("test", nil), nil, nil),
+					makeFunctionStmt(true, "subfield", makeParameters("field_path", "List", "field_decoder", "Decoder", "next", nil), nil, string("Decoder")),
+					makeFunctionStmt(false, "fold_dict", makeParameters("acc", nil, "key", "Dynamic", "value", nil, "key_decoder", nil, "value_decoder", nil), nil, nil),
 				},
 			},
 		},
@@ -234,6 +289,23 @@ pub fn main() {
     }
   }
 }
+
+pub fn one_of(
+  first: Decoder(a),
+  or alternatives: List(Decoder(a)),
+) -> Decoder(a) {
+  Decoder(function: fn(dynamic_data) {
+    let #(_, errors) as layer = first.function(dynamic_data)
+    case errors {
+      [] -> layer
+      [_, ..] -> run_decoders(dynamic_data, layer, alternatives)
+    }
+  })
+}
+
+pub fn from_list(list: List(#(k, v))) -> Dict(k, v) {
+  from_list_loop(list, new())
+}
 `,
 			ast: SourceFile{Statements: []Node{
 				makeImportStmt("gleam/string"),
@@ -253,6 +325,9 @@ pub fn main() {
 				makeFunctionStmt(true, "greeting",
 					makeParameters("user", "User"), nil, string("String")),
 				makeFunctionStmt(true, "main", nil, nil, nil),
+				makeFunctionStmt(true, "one_of",
+					makeParameters("first", "Decoder", "or alternatives", "List"), nil, string("Decoder")),
+				makeFunctionStmt(true, "from_list", makeParameters("list", "List"), nil, string("Dict")),
 			}},
 		},
 	}
@@ -260,7 +335,13 @@ pub fn main() {
 	for _, tc := range testCases {
 		ast, err := testParse(tc.input)
 		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
+			matches := regexp.MustCompile(`^.*test\.gleam:(\d+):`).FindStringSubmatch(err.Error())
+			if len(matches) == 0 {
+				t.Fatalf("failed to get parse line: maybe a different error err: %v", err)
+			}
+			line, _ := strconv.Atoi(matches[1])
+
+			t.Fatalf("expected no error, got %v, test line:\n\n\t%v", err, strings.Split(tc.input, "\n")[line-1])
 		}
 		if diff := cmp.Diff(tc.ast, ast); diff != "" {
 			t.Fatalf("desc: (%s)\n(-want, +got)=\n%s", tc.desc, diff)

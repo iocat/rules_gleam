@@ -37,10 +37,12 @@ import (
 var depsRegex, _ = regexp.Compile(`(?m)deps\s*=\s*\[((\s*".*"\s*,?\s*)*)]`)
 
 var specialDeps = map[string]string{
-	"@bazel_gazelle//:REPO":            "github.com/bazelbuild/bazel-gazelle",
-	"@gazelle//:REPO":                  "github.com/bazelbuild/bazel-gazelle",
-	"@com_github_google_go_cmp//:REPO": "github.com/google/go-cmp",
+	"@bazel_gazelle//:REPO":                   "github.com/bazelbuild/bazel-gazelle",
+	"@gazelle//:REPO":                         "github.com/bazelbuild/bazel-gazelle",
+	"@com_github_google_go_cmp//:REPO":        "github.com/google/go-cmp",
 	"@com_github_rogpeppe_go_internal//:REPO": "github.com/rogpeppe/go-internal",
+	"@com_github_pmezard_go_difflib//:REPO":   "github.com/pmezard/go-difflib",
+	"@rules_go//:REPO":                        "github.com/bazel-contrib/rules_go",
 }
 
 func main() {
@@ -139,7 +141,7 @@ func main() {
 	for _, label := range labels {
 		fmt.Fprintf(buf, "    %s,\n", label)
 	}
-	fmt.Fprintln(buf, "]\n")
+	fmt.Fprintf(buf, "]\n\n")
 
 	fmt.Fprintln(buf, "GLEAM_REPOSITORY_TOOLS_DEPS = {")
 	for _, dep := range deps {

@@ -1,5 +1,5 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("//gleam:build.bzl", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
+load("//gleam:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
 def _gleam_library_impl(ctx):
@@ -15,7 +15,7 @@ def _gleam_library_impl(ctx):
             inputs = inputs.sources + lib_inputs + [gleam_compiler],
             outputs = outputs.all_files,
             use_default_shell_env = True,
-            mnemonic="GleamLibraryCompile",
+            mnemonic = "GleamLibraryCompile",
             command = """
                 COMPILER="$(pwd)/%s" &&
                 cd %s &&
@@ -43,25 +43,26 @@ def _gleam_library_impl(ctx):
             erl_module = depset(direct = outputs.erl_mods, transitive = [dep[GleamErlPackageInfo].erl_module for dep in ctx.attr.deps]),
             beam_module = depset(direct = outputs.beam_files, transitive = [dep[GleamErlPackageInfo].beam_module for dep in ctx.attr.deps]),
             gleam_cache = depset(direct = outputs.cache_files, transitive = [dep[GleamErlPackageInfo].gleam_cache for dep in ctx.attr.deps]),
+            strip_src_prefix = ctx.attr.strip_src_prefix,
         ),
     ]
 
 # Provides GleamErlPackageInfo and DefaultInfo that includes targets that are .beam, .erl sources.
 gleam_library = rule(
     implementation = _gleam_library_impl,
-    attrs = {
-        "srcs": attr.label_list(
+    attrs = dict(
+        COMMON_ATTRS,
+        srcs = attr.label_list(
             doc = "The list of gleam module files to compile under the current package.",
             mandatory = True,
             allow_files = [".gleam"],
         ),
-        "data": attr.label_list(doc = "The data available at runtime", allow_files = True),
-        "deps": attr.label_list(
+        deps = attr.label_list(
             doc = "The list of dependent gleam modules.",
             providers = [GleamErlPackageInfo],
         ),
-    },
+    ),
     toolchains = [
-        "//gleam_tools:toolchain_type"
-    ]
+        "//gleam_tools:toolchain_type",
+    ],
 )

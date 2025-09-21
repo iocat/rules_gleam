@@ -11,6 +11,9 @@ import (
 type GleamConfig struct {
 	// For directive gleam_visibility
 	gleamVisibility []string
+
+	// Whether we're generates for an external Gleam (Hex) repository
+	externalRepo bool
 }
 
 func (c *GleamConfig) clone() *GleamConfig {
@@ -18,12 +21,16 @@ func (c *GleamConfig) clone() *GleamConfig {
 	copy(visibility, c.gleamVisibility)
 	return &GleamConfig{
 		gleamVisibility: visibility,
+		externalRepo:    c.externalRepo,
 	}
 }
 
 func (g *gleamLanguage) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	pc := &GleamConfig{}
 	c.Exts[languageName] = pc
+
+	fs.BoolVar(&pc.externalRepo, "gleam_external_repo", //
+		false, "Whether we're setting up an external Gleam repository")
 }
 
 func (g *gleamLanguage) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -46,7 +53,7 @@ func (g *gleamLanguage) Configure(c *config.Config, rel string, f *rule.File) {
 	var config *GleamConfig
 	if c, ok := c.Exts[languageName]; !ok {
 		config = &GleamConfig{}
-	}else {
+	} else {
 		config = c.(*GleamConfig).clone()
 	}
 	c.Exts[languageName] = config

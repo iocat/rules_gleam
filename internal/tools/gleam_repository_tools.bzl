@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//internal:common.bzl", "env_execute", "executable_extension", "watch")
-load("//internal/tools:gleam_repository_tools_srcs.bzl", "GLEAM_REPOSITORY_TOOLS_SRCS", "GLEAM_REPOSITORY_TOOLS_DEPS")
+load("//internal/tools:gleam_repository_tools_srcs.bzl", "GLEAM_REPOSITORY_TOOLS_DEPS", "GLEAM_REPOSITORY_TOOLS_SRCS")
 load("//internal/tools:go_cache_repositories.bzl", "read_cache_env")
 
 _GLEAM_REPOSITORY_TOOLS_BUILD_FILE = """
@@ -43,15 +44,23 @@ def _gleam_repository_tools_impl(ctx):
     watch(ctx, go_tool)
 
     ctx.symlink(
-        ctx.path(Label("//:WORKSPACE")).dirname,
+        ctx.path(Label("//:BUILD")).dirname,
         "src/github.com/iocat/rules_gleam",
     )
 
+    # Symlink top-level file and deps.
     for label, importpath in ctx.attr._gleam_repository_tools_deps.items():
-        ctx.symlink(
-            ctx.path(label).dirname,
-            "src/%s" % importpath,
-        )
+        for file in ctx.path(label).dirname.readdir():
+            base = file.basename
+            if (base == "examples" or
+                base == "bcr_tests" or base == "docs" or base == "vendor" or 
+                base == "third_party" or base == "testdata" or base == ".ijwb"):
+                pass  # We already stage vendor stuffs! If not, use hack.
+            else:
+                ctx.symlink(
+                    file,
+                    "src/%s/%s" % (importpath, file.basename),
+                )
 
     env.update({
         "GOPATH": str(ctx.path(".")),
@@ -101,7 +110,7 @@ def _gleam_repository_tools_impl(ctx):
         "-asmflags",
         "all=-trimpath=" + env["GOPATH"],
         "github.com/iocat/rules_gleam/internal/tools/get_hex_repos",
-        "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
+        "github.com/iocat/rules_gleam/internal/tools/gazelle",
     ]
     result = env_execute(ctx, args, environment = env)
     if result.return_code:
@@ -109,7 +118,7 @@ def _gleam_repository_tools_impl(ctx):
 
     # add a build file to export the tools
     ctx.file(
-        "BUILD.bazel",
+        "BUILD",
         _GLEAM_REPOSITORY_TOOLS_BUILD_FILE.format(extension = executable_extension(ctx)),
         False,
     )

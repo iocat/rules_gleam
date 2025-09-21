@@ -84,7 +84,7 @@ def _go_repository_cache_impl(ctx):
     env_content = "\n".join(["{k}='{v}'\n".format(k = k, v = v) for k, v in cache_env.items()])
 
     ctx.file("go.env", env_content)
-    ctx.file("BUILD.bazel", 'exports_files(["go.env"])')
+    ctx.file("BUILD", 'exports_files(["go.env"])')
 
 go_repository_cache = repository_rule(
     _go_repository_cache_impl,

@@ -1,45 +1,56 @@
 # Accept gleam.toml, generate manifest.toml
 
-load("//internal:common.bzl", "env_execute")
+load("//internal:common.bzl", "env_execute", "watch", "executable_extension")
+
+TEMP_DIR = "__hexpkg"
 
 def _gleam_hex_repository(ctx):
     tar_package_url = _hex_tar_url(ctx.attr.module_name, ctx.attr.version)
+    ctx.report_progress("Downloading Repo")
     ctx.download_and_extract(
         url = tar_package_url,
         sha256 = ctx.attr.checksum,
         type = "tar",
-        output = "hexpkg",
+        output = TEMP_DIR,
     )
-    ctx.file("BUILD.bazel", """
-package(
-    default_visibility = ["//visibility:public"]
-)
+    ctx.file("BUILD", """load("@gazelle//:def.bzl", "gazelle")
+load("@rules_gleam//gleam:defs.bzl", "gleam_library")
 
-load("@gazelle//:def.bzl", "gazelle")
+package(
+    default_visibility = ["//visibility:public"],
+)
 
 gazelle(
     name = "gazelle",
     gazelle = "@rules_gleam//gazelle",
 )
 
-# gleam_library(
-#     name = "gleam_stdlib",
-#     srcs = [],
-# )
-    """)
-    ctx.extract("hexpkg/contents.tar.gz", output = ".", strip_prefix = "src")
-    ctx.delete("hexpkg")
+""")
+    ctx.extract("%s/contents.tar.gz" % TEMP_DIR, output = ".", strip_prefix = "src")
+    ctx.delete(TEMP_DIR)
 
-    # ctx.rename("src", ".")
-    # print(src)
-    # if not src.exists:
-    #     fail("There is no src directory")
-    # result = env_execute(ctx, ["cp", "-R", src, "%s/.."])
-    # print(result.stderr)
-    print(env_execute(ctx, ["tree", "."]).stderr)
-    # Invoke gazelle update-repos to create BUILDs target for
-    # an external dep.
-    pass
+    _gazelle_label = Label("@rules_gleam_internal_tools//:bin/gazelle{}".format(executable_extension(ctx)))
+    _gazelle = ctx.path(_gazelle_label)
+    watch(ctx, _gazelle)
+
+    cmd = [
+        _gazelle,
+        "-mode",
+        "fix",
+        "-gleam_external_repo",
+        "-repo_root",
+        ctx.path(""),
+    ]
+    cmd.append(ctx.path(""))
+    ctx.report_progress("Runnning Gazelle")
+
+    result = env_execute(ctx, cmd)
+    if result.return_code:
+        fail("failed to generate BUILD files for %s: %s. err: %s" % (
+            ctx.attr.module_name,
+            result.stdout,
+            result.stderr,
+        ))
 
 gleam_hex_repository = repository_rule(
     _gleam_hex_repository,
@@ -94,4 +105,4 @@ def gleam_hex_repositories(module_ctx, *, gleam_toml, _get_hex_repos = Label("@r
             otp_app = repo.get("otp_app"),
         )
 
-    return [repo.get('module_name') for repo in repos]
+    return [repo.get("module_name") for repo in repos]

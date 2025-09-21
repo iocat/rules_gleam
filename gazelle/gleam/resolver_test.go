@@ -279,7 +279,7 @@ func TestResolveGleam(t *testing.T) {
 			rc := testRemoteCache(nil)
 
 			for _, bf := range testCase.index {
-				buildPath := filepath.Join(filepath.FromSlash(bf.pkg), "BUILD.bazel")
+				buildPath := filepath.Join(filepath.FromSlash(bf.pkg), "BUILD")
 				f, err := rule.LoadData(buildPath, bf.pkg, []byte(dedent.Dedent(bf.content)))
 				if err != nil {
 					t.Fatal(err)
@@ -293,7 +293,7 @@ func TestResolveGleam(t *testing.T) {
 					ix.AddRule(c, r, f)
 				}
 			}
-			buildPath := filepath.Join(filepath.FromSlash(testCase.old.pkg), "BUILD.bazel")
+			buildPath := filepath.Join(filepath.FromSlash(testCase.old.pkg), "BUILD")
 			f, err := rule.LoadData(buildPath, testCase.old.pkg, []byte(dedent.Dedent(testCase.old.content)))
 			if err != nil {
 				t.Fatal(err)

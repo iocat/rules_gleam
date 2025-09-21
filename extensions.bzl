@@ -48,8 +48,8 @@ def _compiler_extension(module_ctx):
 
     return extension_metadata(
         module_ctx,
-        root_module_direct_deps = hex_modules,
-        root_module_direct_dev_deps = ["gleam_toolchains"],
+        root_module_direct_deps = hex_modules + ["gleam_toolchains"],
+        root_module_direct_dev_deps = [],
         reproducible = True,
     )
 

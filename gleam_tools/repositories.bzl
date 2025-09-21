@@ -63,7 +63,7 @@ toolchain(
         )
 
     # Base BUILD file for this repository
-    repository_ctx.file("BUILD.bazel", build_content)
+    repository_ctx.file("BUILD", build_content)
 
 toolchains_repositories = repository_rule(
     _toolchains_repositories_impl,

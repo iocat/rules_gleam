@@ -1,4 +1,8 @@
-import demo/demo.{type Tree, empty, fibonacci, create_node, sorted_list_to_balanced_tree}
+import demo/demo.{
+  type Tree, create_node, empty, fibonacci, sorted_list_to_balanced_tree,
+}
+import gleam/io
+import gleam/int
 
 @external(erlang, "example_ffi", "tail_recursive")
 fn fib_ffi(a: Int) -> Int
@@ -7,13 +11,13 @@ fn fib_ffi(a: Int) -> Int
 fn naive(a: Int) -> Int
 
 pub fn main() {
-  echo fibonacci(3)
+  io.println(fibonacci(3) |> int.to_string)
 
   let tree: Tree(Int) = create_node(1, empty, empty)
   echo tree
+  echo sorted_list_to_balanced_tree([1, 3, 3, 4, 5, 6, 19, 12])
 
-  echo sorted_list_to_balanced_tree([1 , 3, 3, 4, 5, 6, 19, 12])
-
-  echo fib_ffi(100)
-  echo naive(20)
+  io.println(fib_ffi(100) |> int.to_string)
+  io.println(naive(20) |> int.to_string)
+  io.println("Hello " <> "JS" <> "!")
 }

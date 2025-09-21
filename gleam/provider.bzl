@@ -5,6 +5,7 @@ GleamErlPackageInfo = provider(
         "erl_module": "depset of Erlang compilation output files.",
         "beam_module": "depset of Beam module compilation output files.",
         "gleam_cache": "depset of Gleam cache and cache_meta files for this module.",
+        "strip_src_prefix": "the prefix to strip from all the files above for external module",
     },
 )
 

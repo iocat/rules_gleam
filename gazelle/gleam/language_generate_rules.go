@@ -137,6 +137,17 @@ func (gmb *gleamModuleBundle) internalModule() *gleamModuleInfo {
 	return nil
 }
 
+func (gmb *gleamModuleBundle) setSourcePrefix(r *rule.Rule) {
+	if GetGleamConfig(gmb.c).externalRepo {
+		externalIndex := strings.LastIndex(gmb.c.RepoRoot, "external/")
+		if externalIndex < 0 {
+			return
+		}
+		externalIndex += len("external/")
+		r.SetAttr("strip_src_prefix", fmt.Sprintf("%s%s", "external/", gmb.c.RepoRoot[externalIndex:]))
+	}
+}
+
 func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 	internalModule := gmb.internalModule()
 	rules := []*rule.Rule{}
@@ -144,10 +155,11 @@ func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 	r.SetAttr("srcs", filter(gmb.sources(), func(m string) bool {
 		return internalModule == nil || m != internalModule.file
 	}))
+	gmb.setSourcePrefix(r)
 	switch gmb.kind {
 	case ruleKindBin:
 		r.SetAttr("visibility", []string{"//visibility:private"})
-		// If bin has multiple sources, add a main_module to identify 
+		// If bin has multiple sources, add a main_module to identify
 		// which module declare the main function.
 		if gmb.mainModuleName != "" && len(r.AttrStrings("srcs")) > 1 {
 			r.SetAttr("main_module", gmb.mainModuleName)
@@ -161,6 +173,7 @@ func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 		internalR := rule.NewRule("gleam_library", gmb.name+"_internal")
 		internalR.SetAttr("srcs", []string{internalModule.file})
 		internalR.SetAttr("visibility", []string{fmt.Sprintf("//%s:__subpackages__", gmb.rel)})
+		gmb.setSourcePrefix(internalR)
 
 		rules = append(rules, internalR)
 	}
@@ -187,7 +200,7 @@ func (gmb *gleamModuleBundle) generateImports() []any {
 func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResult {
 	bundles := []*gleamModuleBundle{}
 	name := path.Base(args.Rel)
-	if len(name) == 0 {
+	if len(name) == 0 || name == "." {
 		name = "lib"
 	}
 
@@ -216,10 +229,21 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 			}
 		case erlExt:
 			if gleamFFIBundle == nil {
-				gleamFFIBundle = &gleamModuleBundle{kind: ruleKindErlLib, name: fmt.Sprintf("%s_ffi", name), modules: make(map[string]gleamModuleInfo), c: args.Config, rel: args.Rel}
+				gleamFFIBundle = &gleamModuleBundle{
+					kind:    ruleKindErlLib,
+					name:    fmt.Sprintf("%s_ffi", name),
+					modules: make(map[string]gleamModuleInfo),
+					c:       args.Config,
+					rel:     args.Rel,
+				}
 			}
 
 			nonNsModule := strings.TrimSuffix(filepath.Base(file), erlExt)
+			// Precompiled Gleam module with "@" means these files are part of Gleam compilation
+			// with the provided namespace separator, so we exclude them.
+			if strings.Contains(nonNsModule, "@") {
+				continue
+			}
 			if _, ok := gleamFFIBundle.modules[nonNsModule]; ok {
 				log.Printf("Duplicate Erl FFI module name, please consider rename, Gleam FFI implementation doesn't have dir-like namespace: %s", nonNsModule)
 				if len(gleamFFIBundle.modules) == 0 {

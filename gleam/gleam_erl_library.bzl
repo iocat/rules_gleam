@@ -2,7 +2,7 @@
 # 
 # @external(erlang, "erl", "function")
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("//gleam:build.bzl", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
+load("//gleam:build.bzl", "COMMON_ATTRS","declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
 def _gleam_erl_library_impl(ctx):
@@ -44,20 +44,21 @@ def _gleam_erl_library_impl(ctx):
             erl_module = depset(direct = outputs.erl_mods),
             beam_module = depset(direct = outputs.beam_files),
             gleam_cache = depset(direct = outputs.cache_files),
+            strip_src_prefix = ctx.attr.strip_src_prefix,
         ),
     ]
 
 # Provides GleamErlPackageInfo and DefaultInfo that includes targets that are .beam, .erl sources.
 gleam_erl_library = rule(
     implementation = _gleam_erl_library_impl,
-    attrs = {
-        "srcs": attr.label_list(
+    attrs = dict(
+        COMMON_ATTRS,
+        srcs =  attr.label_list(
             doc = "The list of gleam module files to compile under the current package.",
             mandatory = True,
             allow_files = [".erl"],
         ),
-        "data": attr.label_list(doc = "The data available at runtime", allow_files = True),
-    },
+    ),
     toolchains = [
         "//gleam_tools:toolchain_type"
     ]

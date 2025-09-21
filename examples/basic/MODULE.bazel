@@ -1,12 +1,12 @@
-bazel_dep(name = "rules_gleam", version = "0.0.0", dev_dependency = True)
+bazel_dep(name = "rules_gleam", version = "0.0.0")
 local_path_override(
     module_name = "rules_gleam",
     path = "../..",
 )
 
+bazel_dep(name = "gazelle", version = "0.45.0")
+
 gleam = use_extension("@rules_gleam//:extensions.bzl", "gleam")
 gleam.deps(gleam_toml = "//:gleam.toml")
 gleam.toolchain(version = "latest")
-use_repo(gleam, "gleam_json", "gleam_stdlib", "gleeunit")
-
-bazel_dep(name = "gazelle", version = "0.45.0")
+use_repo(gleam, "gleam_json", "gleam_stdlib", "gleam_toolchains", "gleeunit")

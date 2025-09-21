@@ -15,9 +15,9 @@ def declare_out_file_with_ext(ctx, src, ext, fully_qual_path = True):
     """
     file_path = ""
     if fully_qual_path:
-        file_path = paths.replace_extension(src.path, ext).replace("/", "@")
+        file_path = paths.replace_extension(strip_src_prefix(ctx,src.path), ext).replace("/", "@")
     else:
-        file_path = paths.replace_extension(paths.basename(src.path), ext)
+        file_path = paths.replace_extension(paths.basename(strip_src_prefix(ctx,src.path)), ext)
 
     file = ctx.actions.declare_file(file_path)
     return file
@@ -63,9 +63,10 @@ def declare_outputs(ctx, srcs, *, is_binary, main_module):
     beam_app_manifest = None
 
     for src in srcs:
-        module_name = paths.replace_extension(src.path, "").replace("/", "@")
+        src_path = strip_src_prefix(ctx, src.path)
+        module_name = paths.replace_extension(src_path, "").replace("/", "@")
         module_names.append(module_name)
-        ext = paths.split_extension(src.path)[1]
+        ext = paths.split_extension(src_path)[1]
         if ext == ".gleam":
             # Gleam produces other artefacts.
             output_erl_mods.append(declare_out_file_with_ext(ctx, src, ".erl"))
@@ -150,14 +151,23 @@ def declare_lib_files_for_dep(ctx, deps):
         )
         lib_inputs.append(link)
 
-    seen_beam_module = set()
+    seen_beam_module = {}
     for lib_gleam_beam_file in lib_beam_files:
-        if paths.basename(lib_gleam_beam_file.path) in seen_beam_module:
-            fail("""Beam module {MODULE} is causing duplicates, probably because of Gleam Erlang FFI has 
-                conflicting name. Note that gleam_erl_library() does not create
-                namespaces like a Gleam module. Make sure your FFI module is unique!""".format(MODULE = lib_gleam_beam_file.path))
+        beam_dir = paths.dirname(lib_gleam_beam_file.path)
+        beam_base = paths.basename(lib_gleam_beam_file.path)
+        if beam_base in seen_beam_module:
+            if seen_beam_module.get(beam_base) != beam_dir:
+                fail(
+                    """Beam module {MODULE} is causing duplicates, existed 
+                    as {EXISTED}, probably because of Gleam Erlang FFI has 
+                    conflicting name. Note that gleam_erl_library() does not create
+                    namespaces like a Gleam module. Make sure your FFI module is unique!""".format(
+                        MODULE = lib_gleam_beam_file.path,
+                        EXISTED = seen_beam_module.get(beam_base),
+                    ),
+                )
         else:
-            seen_beam_module.add(paths.basename(lib_gleam_beam_file.path))
+            seen_beam_module.update([(beam_base, beam_dir)])
             link = ctx.actions.declare_file(paths.join(lib_path, "placeholder", GLEAM_EBIN_DIR, paths.basename(lib_gleam_beam_file.path)))
             ctx.actions.symlink(
                 output = link,
@@ -199,7 +209,7 @@ version = "0.0.0"
     # Build inputs.
     sources = []
     for src in srcs:
-        input_src = ctx.actions.declare_file(paths.join("src", src.path))
+        input_src = ctx.actions.declare_file(paths.join("src", strip_src_prefix(ctx, src.path)))
         ctx.actions.symlink(output = input_src, target_file = src)
         sources.append(input_src)
 
@@ -224,3 +234,34 @@ version = "0.0.0"
 
 def get_gleam_compiler(ctx):
     return ctx.toolchains["//gleam_tools:toolchain_type"].gleamtools.compiler
+
+
+def strip_src_prefix(ctx, src):    
+    """
+    Strip the prefix from the source path.
+
+    Args:
+        ctx (object): The Bazel context.
+        src (str): The source path.
+
+    Returns:
+        str: The source path with the prefix stripped off.
+    """
+
+    prefix = ctx.attr.strip_src_prefix
+    if not prefix.endswith("/"):
+        prefix = prefix + "/"
+    if prefix:
+        return src.removeprefix(prefix)
+    return src
+
+COMMON_ATTRS = {
+    "strip_src_prefix": attr.string(
+        doc = """Strip the prefix from the source path.
+        Note this might break compilation because the import paths are not patched to follow.
+
+        This is typically for external repository for moving external dependency inline with 
+        the current repository.""",
+    ),
+    "data": attr.label_list(doc = "The data available at runtime", allow_files = True),
+}

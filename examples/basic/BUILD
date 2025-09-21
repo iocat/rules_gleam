@@ -14,7 +14,12 @@ gleam_binary(
     name = "example",
     srcs = ["example.gleam"],
     visibility = ["//visibility:private"],
-    deps = [":example_ffi"],
+    deps = [
+        ":example_ffi",
+        "//demo",
+        "@gleam_stdlib//gleam",
+        "@gleam_stdlib//gleam/dynamic",
+    ],
 )
 
 gleam_erl_library(

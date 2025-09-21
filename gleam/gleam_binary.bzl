@@ -1,5 +1,5 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("//gleam:build.bzl", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
+load("//gleam:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
 def _gleam_binary_impl(ctx):
@@ -13,7 +13,7 @@ def _gleam_binary_impl(ctx):
     lib_inputs, lib_path = declare_lib_files_for_dep(ctx, ctx.attr.deps)
 
     outputs = declare_outputs(ctx, ctx.files.srcs, is_binary = True, main_module = main_module)
- 
+
     working_root = paths.dirname(inputs.toml_file.path)
     gleam_compiler = get_gleam_compiler(ctx)
     if len(outputs.all_files_include_binary):
@@ -68,23 +68,31 @@ def _gleam_binary_impl(ctx):
 
     # Symlinks needed .beam dependencies for target executable to run..
     dep_beam_symlinks = []
-    seen_beam_module = set()
+    seen_beam_module = {}
     for package in [dep[GleamErlPackageInfo] for dep in ctx.attr.deps]:
         dep_beam_modules = package.beam_module
         for dep_beam_module in dep_beam_modules.to_list():
             dir = paths.dirname(paths.relativize(dep_beam_module.path, ctx.bin_dir.path))
+            dep_beam_path = paths.basename(dep_beam_module.path)
+
             # For non-root beam modules, carry it to the current directory.
             if dir != "":
-                dep_beam_path = paths.basename(dep_beam_module.path)
                 if dep_beam_path in seen_beam_module:
-                    fail("""Beam module {MODULE} duplicated, probably because of Erlang FFI has 
-                        conflicting name. Note that gleam_erl_library() does not create 
-                        namespace like a Gleam module.""".format(MODULE = dep_beam))
+                    if seen_beam_module.get(dep_beam_path) != dir:
+                        fail("""Beam module {MODULE} conflits at {DIR}, existed at {EXISTED}, probably because of Erlang FFI has 
+                            conflicting name. Note that gleam_erl_library() does not create 
+                            namespace like a Gleam module.""".format(
+                            MODULE = dep_beam,
+                            DIR = dir,
+                            EXISTED = seen_beam_module.get(dep_beam_path),
+                        ))
                 else:
-                    seen_beam_module.add(dep_beam_path)
+                    seen_beam_module.update([(dep_beam_path, dir)])
                     dep_beam = ctx.actions.declare_file(paths.basename(dep_beam_module.path))
                     ctx.actions.symlink(output = dep_beam, target_file = dep_beam_module)
                     dep_beam_symlinks.append(dep_beam)
+            else:
+                seen_beam_module.update([(dep_beam_path, "")])
     runfiles = runfiles.merge(ctx.runfiles(files = dep_beam_symlinks))
 
     return [
@@ -94,6 +102,7 @@ def _gleam_binary_impl(ctx):
             erl_module = erl_mod_depset,
             beam_module = depset(direct = outputs.beam_files, transitive = [dep[GleamErlPackageInfo].beam_module for dep in ctx.attr.deps]),
             gleam_cache = depset(direct = outputs.cache_files, transitive = [dep[GleamErlPackageInfo].gleam_cache for dep in ctx.attr.deps]),
+            strip_src_prefix = ctx.attr.strip_src_prefix,
         ),
     ]
 
@@ -101,31 +110,31 @@ def _gleam_binary_impl(ctx):
 gleam_binary = rule(
     implementation = _gleam_binary_impl,
     executable = True,
-    attrs = {
-        "srcs": attr.label_list(
+    attrs = dict(
+        COMMON_ATTRS,
+        srcs = attr.label_list(
             doc = "The list of gleam module files to compile under the current package.",
             mandatory = True,
             allow_files = [".gleam"],
         ),
-        "main_module": attr.string(doc = "The module name containing the main function. Must match the file name of one of the source."),
-        "data": attr.label_list(doc = "The data available at runtime"),
-        "deps": attr.label_list(
+        main_module = attr.string(doc = "The module name containing the main function. Must match the file name of one of the source. Default to the module at srcs[0]"),
+        deps = attr.label_list(
             doc = "The list of dependent gleam modules.",
             providers = [GleamErlPackageInfo],
         ),
-        "_main_erl": attr.label(
+        _main_erl = attr.label(
             default = "//gleam/templates:[[main_module]]@@main.erl",
             allow_single_file = True,
         ),
-        "_app_manifest": attr.label(
+        _app_manifest = attr.label(
             default = "//gleam/templates:[[main_module]].app",
             allow_single_file = True,
         ),
-        "_sh_entrypoint": attr.label(
+        _sh_entrypoint = attr.label(
             default = "//gleam/templates:[[main_module]].sh",
             allow_single_file = True,
         ),
-    },
+    ),
     toolchains = [
         "//gleam_tools:toolchain_type",
     ],
