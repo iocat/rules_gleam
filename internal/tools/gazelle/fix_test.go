@@ -16,62 +16,59 @@ limitations under the License.
 package main
 
 import (
-	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
-	"github.com/bazelbuild/rules_go/go/runfiles"
 )
 
 // Set via x_defs.
-var goRootFile = ""
+// var goRootFile = ""
 
-func TestMain(m *testing.M) {
-	status := 1
-	defer func() {
-		os.Exit(status)
-	}()
+// func TestMain(m *testing.M) {
+// 	status := 1
+// 	defer func() {
+// 		os.Exit(status)
+// 	}()
 
-	flag.Parse()
+// 	flag.Parse()
 
-	var err error
-	tmpDir, err := os.MkdirTemp(os.Getenv("TEST_TMPDIR"), "gazelle_test")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	defer func() {
-		// Before deleting files in the temporary directory, add write permission
-		// to any files that don't have it. Files and directories in the module cache
-		// are read-only, and on Windows, the read-only bit prevents deletion and
-		// prevents Bazel from cleaning up the source tree.
-		_ = filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if mode := info.Mode(); mode&0o200 == 0 {
-				err = os.Chmod(path, mode|0o200)
-			}
-			return err
-		})
-		os.RemoveAll(tmpDir)
-	}()
+// 	var err error
+// 	tmpDir, err := os.MkdirTemp(os.Getenv("TEST_TMPDIR"), "gazelle_test")
+// 	if err != nil {
+// 		fmt.Fprintln(os.Stderr, err)
+// 		return
+// 	}
+// 	defer func() {
+// 		// Before deleting files in the temporary directory, add write permission
+// 		// to any files that don't have it. Files and directories in the module cache
+// 		// are read-only, and on Windows, the read-only bit prevents deletion and
+// 		// prevents Bazel from cleaning up the source tree.
+// 		_ = filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
+// 			if err != nil {
+// 				return err
+// 			}
+// 			if mode := info.Mode(); mode&0o200 == 0 {
+// 				err = os.Chmod(path, mode|0o200)
+// 			}
+// 			return err
+// 		})
+// 		os.RemoveAll(tmpDir)
+// 	}()
 
-	goRootFilePath, err := runfiles.Rlocation(goRootFile)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "could not locate GOROOT file:", err)
-		return
-	}
-	os.Setenv("GOROOT", filepath.Dir(goRootFilePath))
-	os.Setenv("GOCACHE", filepath.Join(tmpDir, "gocache"))
-	os.Setenv("GOPATH", filepath.Join(tmpDir, "gopath"))
+// 	goRootFilePath, err := runfiles.Rlocation(goRootFile)
+// 	if err != nil {
+// 		fmt.Fprintln(os.Stderr, "could not locate GOROOT file:", err)
+// 		return
+// 	}
+// 	os.Setenv("GOROOT", filepath.Dir(goRootFilePath))
+// 	os.Setenv("GOCACHE", filepath.Join(tmpDir, "gocache"))
+// 	os.Setenv("GOPATH", filepath.Join(tmpDir, "gopath"))
 
-	status = m.Run()
-}
+// 	status = m.Run()
+// }
 
 func defaultArgs(dir string) []string {
 	return []string{

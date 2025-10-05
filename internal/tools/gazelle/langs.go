@@ -17,9 +17,13 @@ package main
 
 import (
 	"github.com/bazelbuild/bazel-gazelle/language"
+	golang "github.com/bazelbuild/bazel-gazelle/language/go"
+	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/iocat/rules_gleam/gazelle/gleam"
 )
 
 var languages = []language.Language{
+	proto.NewLanguage(),
+	golang.NewLanguage(),
 	gleam.NewLanguage(),
 }

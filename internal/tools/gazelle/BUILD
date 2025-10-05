@@ -32,7 +32,6 @@ go_test(
         "@com_github_google_go_cmp//cmp",
         "@gazelle//config",
         "@gazelle//testtools",
-        "@rules_go//go/runfiles",
     ],
 )
 
@@ -60,6 +59,8 @@ go_library(
         "@gazelle//flag",
         "@gazelle//label",
         "@gazelle//language",
+        "@gazelle//language/go",
+        "@gazelle//language/proto",
         "@gazelle//merger",
         "@gazelle//repo",
         "@gazelle//resolve",
