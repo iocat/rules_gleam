@@ -2,7 +2,7 @@
 set -eu
 
 PACKAGE={PACKAGE}
-BASE=$(dirname "$0")
+BASE=$(echo "$0.runfiles/_main")
 
 run() {
   exec erl \

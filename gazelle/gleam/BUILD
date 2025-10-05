@@ -1,4 +1,5 @@
 load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@gleam_hex_repositories_config//:defs.bzl", "DEPS")
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 package(
@@ -16,9 +17,13 @@ go_library(
         "resolver.go",
         "utils.go",
     ],
+    data = [
+        "@gleam_hex_repositories_config//:BUILD",  # keep
+    ] + DEPS,
     importpath = "github.com/iocat/rules_gleam/gazelle/gleam",
     deps = [
         "//gazelle/gleam/parser",
+        "@com_github_burntsushi_toml//:toml",
         "@com_github_kr_pretty//:pretty",
         "@gazelle//config",
         "@gazelle//label",

@@ -19,8 +19,10 @@ jobs:
           rebar3-version: "3"
           # elixir-version: "1"
       - uses: bazel-contrib/setup-bazel@0.8.1
-      - name: test gazelle
-        run: bazel test //gazelle/...
+      - name: test all
+        run: |
+          bazel test //gazelle/...
+          bazel test //internal/tools/...
       # - name: test example
       #   run: |
       #     cd examples/basic

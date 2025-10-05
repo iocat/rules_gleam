@@ -29,6 +29,9 @@ def _gleam_binary_impl(ctx):
                 mv ./%s/* ./ &&
                 mv ./ebin/* ./
             """ % (gleam_compiler.path, working_root, lib_path, GLEAM_ARTEFACTS_DIR),
+            env = {
+                "FORCE_COLOR": "true",
+            },
         )
 
     erl_mod_depset = depset(direct = outputs.erl_mods + [inputs.binary_erl_mod], transitive = [dep[GleamErlPackageInfo].erl_module for dep in ctx.attr.deps])
@@ -93,7 +96,8 @@ def _gleam_binary_impl(ctx):
                     dep_beam_symlinks.append(dep_beam)
             else:
                 seen_beam_module.update([(dep_beam_path, "")])
-    runfiles = runfiles.merge(ctx.runfiles(files = dep_beam_symlinks))
+                dep_beam_symlinks.append(dep_beam_module)
+    runfiles = runfiles.merge(ctx.runfiles(files = dep_beam_symlinks + [outputs.output_entry_point, outputs.beam_app_manifest]))
 
     return [
         DefaultInfo(files = depset(outputs.beam_files + [outputs.output_entry_point, outputs.beam_app_manifest]), default_runfiles = runfiles, executable = outputs.output_entry_point),

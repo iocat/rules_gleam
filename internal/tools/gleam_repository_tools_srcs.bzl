@@ -19,6 +19,8 @@ GLEAM_REPOSITORY_TOOLS_SRCS = [
     Label("//gleam_tools:BUILD"),
     Label("//internal:BUILD"),
     Label("//internal/tools:BUILD"),
+    Label("//internal/tools/find_gleam_modules:BUILD"),
+    Label("//internal/tools/find_gleam_modules:find_gleam_modules.go"),
     Label("//internal/tools/gazelle:BUILD"),
     Label("//internal/tools/gazelle:diff.go"),
     Label("//internal/tools/gazelle:fix-update.go"),

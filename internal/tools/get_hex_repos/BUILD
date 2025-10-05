@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_library(
     name = "get_hex_repos_lib",
@@ -12,4 +12,10 @@ go_binary(
     name = "get_hex_repos",
     embed = [":get_hex_repos_lib"],
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "get_hex_repos_test",
+    srcs = ["get_hex_repos_test.go"],
+    embed = [":get_hex_repos_lib"],
 )

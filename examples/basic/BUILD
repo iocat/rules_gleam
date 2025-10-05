@@ -16,9 +16,7 @@ gleam_binary(
     visibility = ["//visibility:private"],
     deps = [
         ":example_ffi",
-        "//demo",
-        "@gleam_stdlib//gleam",
-        "@gleam_stdlib//gleam/dynamic",
+        "@basic//demo",
     ],
 )
 

@@ -174,20 +174,20 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		})
 	}
 
-	// for _, r := range c.Repos {
-	// 	if r.Kind() == "go_repository" {
-	// 		var name string
-	// 		if apparentName := c.ModuleToApparentName(r.AttrString("module_name")); apparentName != "" {
-	// 			name = apparentName
-	// 		} else {
-	// 			name = r.Name()
-	// 		}
-	// 		uc.repos = append(uc.repos, repo.Repo{
-	// 			Name:     name,
-	// 			GoPrefix: r.AttrString("importpath"),
-	// 		})
-	// 	}
-	// }
+	for _, r := range c.Repos {
+		if r.Kind() == "go_repository" {
+			var name string
+			if apparentName := c.ModuleToApparentName(r.AttrString("module_name")); apparentName != "" {
+				name = apparentName
+			} else {
+				name = r.Name()
+			}
+			uc.repos = append(uc.repos, repo.Repo{
+				Name:     name,
+				GoPrefix: r.AttrString("importpath"),
+			})
+		}
+	}
 
 	// If the repo configuration file is not WORKSPACE, also load WORKSPACE
 	// and any declared macro files so we can apply fixes.
@@ -342,7 +342,6 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 
 		// Fix any problems in the file.
 		if f != nil {
-			fmt.Println(languages)
 			for _, l := range filterLanguages(c, languages) {
 				l.Fix(c, f)
 			}

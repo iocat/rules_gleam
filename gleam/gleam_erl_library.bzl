@@ -1,14 +1,14 @@
 # Erl library for interoping with erlang via
-# 
+#
 # @external(erlang, "erl", "function")
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("//gleam:build.bzl", "COMMON_ATTRS","declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
+load("//gleam:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
 def _gleam_erl_library_impl(ctx):
     inputs = declare_inputs(ctx, ctx.files.srcs)
     outputs = declare_outputs(ctx, ctx.files.srcs, is_binary = False, main_module = "")
-    _, lib_path = declare_lib_files_for_dep(ctx, []) # no deps, we need the path.
+    _, lib_path = declare_lib_files_for_dep(ctx, [])  # no deps, we need the path.
 
     working_root = paths.dirname(inputs.toml_file.path)
     gleam_compiler = get_gleam_compiler(ctx)
@@ -17,7 +17,7 @@ def _gleam_erl_library_impl(ctx):
             inputs = inputs.sources + [gleam_compiler],
             outputs = outputs.all_files,
             use_default_shell_env = True,
-            mnemonic="GleamErlLibraryCompile",
+            mnemonic = "GleamErlLibraryCompile",
             command = """
                 COMPILER="$(pwd)/%s" &&
                 cd %s &&
@@ -25,6 +25,9 @@ def _gleam_erl_library_impl(ctx):
                 mv ./%s/* ./ &&
                 mv ./ebin/* ./
             """ % (gleam_compiler.path, working_root, lib_path, GLEAM_ARTEFACTS_DIR),
+            env = {
+                "FORCE_COLOR": "true",
+            },
         )
 
     # Accumulate runfiles.
@@ -53,13 +56,13 @@ gleam_erl_library = rule(
     implementation = _gleam_erl_library_impl,
     attrs = dict(
         COMMON_ATTRS,
-        srcs =  attr.label_list(
+        srcs = attr.label_list(
             doc = "The list of gleam module files to compile under the current package.",
             mandatory = True,
             allow_files = [".erl"],
         ),
     ),
     toolchains = [
-        "//gleam_tools:toolchain_type"
-    ]
+        "//gleam_tools:toolchain_type",
+    ],
 )

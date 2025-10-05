@@ -8,6 +8,8 @@ load("//gleam_tools:repositories.bzl", "register_toolchains")
 load("//internal:common.bzl", "extension_metadata")
 
 def _compiler_extension(module_ctx):
+    direct_deps = {}
+
     non_default_registrations = {}
     for mod in module_ctx.modules:
         if mod.name == "rules_gleam":
@@ -29,6 +31,7 @@ def _compiler_extension(module_ctx):
     register_toolchains(
         version = selected,
     )
+    direct_deps["gleam_toolchains"] = True
 
     gleam_toml = None
     for mod in module_ctx.modules:
@@ -40,15 +43,20 @@ def _compiler_extension(module_ctx):
             gleam_toml = gleam_deps.gleam_toml
 
     hex_modules = []
-    if gleam_toml != None:
-        hex_modules = gleam_hex_repositories(
-            module_ctx,
-            gleam_toml = gleam_toml,
-        )
+    hex_modules = gleam_hex_repositories(
+        module_ctx,
+        gleam_toml = gleam_toml,
+    )
+    for hex_mod in hex_modules:
+        direct_deps[hex_mod] = True
+    
+    first_module = module_ctx.modules[0]
+    if first_module.is_root and first_module.name == "rules_gleam":
+        direct_deps["gleam_hex_repositories_config"] = True
 
     return extension_metadata(
         module_ctx,
-        root_module_direct_deps = hex_modules + ["gleam_toolchains"],
+        root_module_direct_deps = direct_deps.keys(),
         root_module_direct_dev_deps = [],
         reproducible = True,
     )

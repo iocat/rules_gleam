@@ -1,0 +1,1 @@
+# Given a gleam repo, recursive walk to fetch its module paths.

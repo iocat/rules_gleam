@@ -23,6 +23,9 @@ def _gleam_library_impl(ctx):
                 mv ./%s/* ./ &&
                 mv ./ebin/* ./
             """ % (gleam_compiler.path, working_root, lib_path, GLEAM_ARTEFACTS_DIR),
+            env = {
+                "FORCE_COLOR": "true",
+            },
         )
 
     # Accumulate runfiles.

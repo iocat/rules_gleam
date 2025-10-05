@@ -110,6 +110,7 @@ def _gleam_repository_tools_impl(ctx):
         "-asmflags",
         "all=-trimpath=" + env["GOPATH"],
         "github.com/iocat/rules_gleam/internal/tools/get_hex_repos",
+        "github.com/iocat/rules_gleam/internal/tools/find_gleam_modules",
         "github.com/iocat/rules_gleam/internal/tools/gazelle",
     ]
     result = env_execute(ctx, args, environment = env)
