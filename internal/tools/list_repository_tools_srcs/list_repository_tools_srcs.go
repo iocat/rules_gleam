@@ -42,7 +42,7 @@ var specialDeps = map[string]string{
 	"@com_github_google_go_cmp//:REPO":        "github.com/google/go-cmp",
 	"@com_github_rogpeppe_go_internal//:REPO": "github.com/rogpeppe/go-internal",
 	"@com_github_pmezard_go_difflib//:REPO":   "github.com/pmezard/go-difflib",
-	"@rules_go//:REPO":                        "github.com/bazel-contrib/rules_go",
+	"@rules_go//:REPO":                        "github.com/bazelbuild/rules_go",
 }
 
 func main() {

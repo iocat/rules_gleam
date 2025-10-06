@@ -11,6 +11,8 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/rules_go/go/runfiles"
 )
 
 type GleamConfig struct {
@@ -26,10 +28,13 @@ type GleamConfig struct {
 
 func (c *GleamConfig) clone() *GleamConfig {
 	visibility := make([]string, len(c.gleamVisibility))
+	repos := make([]repo.Repo, len(c.repos))
+	copy(repos, c.repos)
 	copy(visibility, c.gleamVisibility)
 	return &GleamConfig{
 		gleamVisibility: visibility,
 		externalRepo:    c.externalRepo,
+		repos: repos,
 	}
 }
 
@@ -49,13 +54,10 @@ func (g *gleamLanguage) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 		if err := maybePopulateRemoteCacheFromGleamToml(c, &gc.repos); err != nil {
 			return err
 		}
-	}else {
+	} else {
 		if err := maybePopulateRemoteCacheFromBzlMod(c, &gc.repos); err != nil {
 			return err
 		}
-	}
-	for _, r := range gc.repos {
-		fmt.Println(r)
 	}
 
 	return nil
@@ -147,8 +149,36 @@ func getRepoNameFromPath(path string) string {
 	return repoComponents[len(repoComponents)-1]
 }
 
-
 func maybePopulateRemoteCacheFromBzlMod(c *config.Config, repos *[]repo.Repo) error {
+	moduleName := c.ModuleToApparentName("gleam_hex_repositories_config")
+	if moduleName == "" {
+		moduleName = "gleam_hex_repositories_config"
+	}
+
+	buildFile, err := runfiles.Rlocation("gleam_hex_repositories_config/BUILD")
+	if err != nil {
+		return err
+	}
+	content, err := os.ReadFile(buildFile)
+	if err != nil {
+		return err
+	}
+	buildFileParsed, err := build.ParseBuild(fmt.Sprintf("%s:BUILD", moduleName), content)
+	if err != nil {
+		return err
+	}
+
+	for _, gleamRepo := range buildFileParsed.Rules("gleam_repository") {
+		gleamModImps := gleamRepo.AttrStrings("gleam_modules")
+		module := gleamRepo.AttrString("module_name")
+
+		for _, imp := range gleamModImps {
+			*repos = append(*repos, repo.Repo{
+				Name:     module,
+				GoPrefix: imp, // Using GoPrefix for now, will need to adjust for Gleam specific prefix if any
+			})
+		}
+	}
 	return nil
 }
 

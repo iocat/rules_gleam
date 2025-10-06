@@ -14,6 +14,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/rogpeppe/go-internal v1.14.1
 	golang.org/x/mod v0.28.0
+	golang.org/x/sync v0.11.0
 	golang.org/x/sys v0.36.0
 	golang.org/x/tools/go/vcs v0.1.0-deprecated
 )

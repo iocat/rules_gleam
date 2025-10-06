@@ -1,5 +1,7 @@
 github.com/BurntSushi/toml v1.5.0 h1:W5quZX/G/csjUnuI8SUYlsHs9M38FC7znL0lIO+DvMg=
 github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
+github.com/bazelbuild/bazel-gazelle v0.45.0 h1:ZfbDRyNppw0Sd42lXVX7ybar63MJofb58Yvl4SvbtYY=
+github.com/bazelbuild/bazel-gazelle v0.45.0/go.mod h1:XdBdWhrTc5x50CKzKXOcwrZWdLuX58IX1KcSaWPtEGo=
 github.com/bazelbuild/buildtools v0.0.0-20250826111327-4006b543a694 h1:LiKs9FsSfMx3NomNclXYkv9enY77oft5Mc/vX/AKHgI=
 github.com/bazelbuild/buildtools v0.0.0-20250826111327-4006b543a694/go.mod h1:PLNUetjLa77TCCziPsz0EI8a6CUxgC+1jgmWv0H25tg=
 github.com/bazelbuild/rules_go v0.57.0 h1:qBFxjy29iJg22xWlu5A3mNwrXtCHiEnHcIt91SsiFGU=

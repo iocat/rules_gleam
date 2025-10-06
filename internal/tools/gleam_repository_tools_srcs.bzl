@@ -53,7 +53,8 @@ GLEAM_REPOSITORY_TOOLS_DEPS = {
     Label("@com_github_rogpeppe_go_internal//:REPO"): "github.com/rogpeppe/go-internal",
     Label("@gazelle//:REPO"): "github.com/bazelbuild/bazel-gazelle",
     Label("@org_golang_x_mod//:REPO"): "golang.org/x/mod",
+    Label("@org_golang_x_sync//:REPO"): "golang.org/x/sync",
     Label("@org_golang_x_sys//:REPO"): "golang.org/x/sys",
     Label("@org_golang_x_tools_go_vcs//:REPO"): "golang.org/x/tools/go/vcs",
-    Label("@rules_go//:REPO"): "github.com/bazel-contrib/rules_go",
+    Label("@rules_go//:REPO"): "github.com/bazelbuild/rules_go",
 }

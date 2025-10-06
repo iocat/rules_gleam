@@ -23,6 +23,7 @@ go_library(
     importpath = "github.com/iocat/rules_gleam/gazelle/gleam",
     deps = [
         "//gazelle/gleam/parser",
+        "@com_github_bazelbuild_buildtools//build",
         "@com_github_burntsushi_toml//:toml",
         "@com_github_kr_pretty//:pretty",
         "@gazelle//config",
@@ -32,6 +33,7 @@ go_library(
         "@gazelle//repo",
         "@gazelle//resolve",
         "@gazelle//rule",
+        "@rules_go//go/runfiles",
     ],
 )
 

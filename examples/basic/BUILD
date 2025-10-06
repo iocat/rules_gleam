@@ -17,6 +17,8 @@ gleam_binary(
     deps = [
         ":example_ffi",
         "@basic//demo",
+        "@hex_gleam_json//gleam",
+        "@hex_gleam_stdlib//gleam",
     ],
 )
 
