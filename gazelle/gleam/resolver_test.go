@@ -306,7 +306,7 @@ var testCases = []resolveTestCase{
 							":test_internal",
 							"//test/internal",
 							"//too/many/level/deep",
-							"@hex_fl//:lib",
+							"@hex_fl//:gleam_lib",
 							"@hex_gleam_stdlib//gleam",
 						],
 					)

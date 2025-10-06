@@ -241,7 +241,7 @@ func (g *gleamLanguage) tryResolveExternalDeps(
 	}
 	depMod := ""
 	if depPkg == "" {
-		depMod = "lib"
+		depMod = "gleam_lib"
 	} else {
 		depMod = filepath.Base(depPkg)
 	}

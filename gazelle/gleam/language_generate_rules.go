@@ -36,7 +36,7 @@ var (
 )
 
 type gleamModuleBundle struct {
-	// default to the package name, but if root will be set to "lib" or "bin"
+	// default to the package name, but if root will be set to "gleam_lib" or "gleam_bin"
 	name string
 	kind ruleKind
 	// Maps to fully qualified module names.
@@ -201,7 +201,7 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 	bundles := []*gleamModuleBundle{}
 	name := path.Base(args.Rel)
 	if len(name) == 0 || name == "." {
-		name = "lib"
+		name = "gleam_lib"
 	}
 
 	var gleamBundle, gleamFFIBundle *gleamModuleBundle
@@ -226,7 +226,7 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 			gleamBundle.modules[module.moduleName] = *module
 			if module.hasMainFn {
 				if len(name) == 0 {
-					gleamBundle.name = "bin"
+					gleamBundle.name = "gleam_bin"
 				}
 				gleamBundle.mainModuleName = module.moduleName
 				gleamBundle.kind = ruleKindBin

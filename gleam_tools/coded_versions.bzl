@@ -1,4 +1,17 @@
+"""Gleam toolchain versions and download information."""
+
 VERSIONS = {
+    "v1.13.0-rc1": {
+        "download_url_template": "https://github.com/gleam-lang/gleam/releases/download/{version}/gleam-{version}-{platform}.tar.gz",
+        "platforms": {
+            "x86_64-apple-darwin": "sha256:2237e801b0d7a01df3ffd67c1de06d04045dc496ecb8d6d33c727504398f2972",
+            "aarch64-apple-darwin": "sha256:a8f095d9f38413b2ad66a82b32465eaea6cf39c34927ea5a07b3aacaf0ae9d49",
+            "aarch64-unknown-linux-musl": "sha256:8725b6457fe0f2fbfe044046a2941b200d8e05a11bea961da9fd17047fc3d50d",
+            "x86_64-unknown-linux-musl": "sha256:3fdc4becaf5e3f6f53ed1e89527e415241a4eab7d81316aeac9a73b55da62922",
+            "aarch64-pc-windows-msvc": "sha256:d2f2d92dbb5ef08a08296aa289733d5dbde43b2d7f5a73baa702b530cc58ac18",
+            "x86_64-pc-windows-msvc": "sha256:29e2794b58db2aab45e074e4d4df0aa8f837a7decc137e778a4a7cbb4c84e714",
+        },
+    },
     "v1.12.0": {
         "download_url_template": "https://github.com/gleam-lang/gleam/releases/download/{version}/gleam-{version}-{platform}.tar.gz",
         "platforms": {
@@ -49,11 +62,11 @@ def get_key(semver):
 
     return (version, major, minor, rc)
 
-semvers = sorted(VERSIONS.keys(), key = get_key, reverse = True)
+_stable_semvers = sorted([key for key in VERSIONS.keys() if "rc" not in key], key = get_key, reverse = True)
 
-VERSIONS["latest"] = {k: v for k, v in VERSIONS[semvers[0]].items()}
+VERSIONS["latest"] = {k: v for k, v in VERSIONS[_stable_semvers[0]].items()}
 VERSIONS["latest"]["download_url_template"] = VERSIONS["latest"]["download_url_template"].format(
-    version = semvers[0],
+    version = _stable_semvers[0],
     # No partial template ;(
-    platform = "{platform}"
+    platform = "{platform}",
 )
