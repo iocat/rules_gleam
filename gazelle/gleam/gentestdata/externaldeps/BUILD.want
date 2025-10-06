@@ -1,0 +1,11 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_binary")
+
+gleam_binary(
+    name = "externaldeps",
+    srcs = ["with_external_dep.gleam"],
+    _gazelle_imports = [
+        "gleam/io",
+        "gleam/json",
+    ],
+    visibility = ["//visibility:private"],
+)

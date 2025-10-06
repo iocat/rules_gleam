@@ -175,6 +175,54 @@ var testCases = []resolveTestCase{
 `,
 	},
 	{
+		desc:  "import from hex repo",
+		index: []buildFile{
+			{
+				pkg: "foo/bar",
+				content: `
+					gleam_library(
+						name = "bar",
+						srcs = [
+							"bar.gleam"
+						],
+					)
+`,
+			},
+		},
+		old: buildFile{
+			pkg: "foo",
+			content: `
+					gleam_library(
+						name = "foo",
+						srcs = [
+							"foo.gleam"
+						],
+						visibility = ["//visibility:private"],
+						_gazelle_imports = [
+							"foo/bar/bar",
+							"gleam/io",
+							"gleeunit/gleeunit",
+							"gleam/int"
+						],
+					)
+	`,
+		},
+		want: `
+					gleam_library(
+						name = "foo",
+						srcs = [
+							"foo.gleam",
+						],
+						visibility = ["//visibility:private"],
+						deps = [
+							"//foo/bar",
+							"@hex_gleam_stdlib//gleam",
+							"@hex_gleeunit//gleeunit",
+						],
+					)
+`,
+	},
+	{
 		desc: "mixed concept",
 		index: []buildFile{
 			{
@@ -231,7 +279,9 @@ var testCases = []resolveTestCase{
 							"too/many/level/deep/level2",
 							"too/many/level/deep/level3",
 							"test/internal/a",
-							"test/internal/b"
+							"test/internal/b",
+							"fl",
+							"gleam/io",
 						],
 					)
 			`,
@@ -256,9 +306,30 @@ var testCases = []resolveTestCase{
 							":test_internal",
 							"//test/internal",
 							"//too/many/level/deep",
+							"@hex_fl//:lib",
+							"@hex_gleam_stdlib//gleam",
 						],
 					)
 			`,
+	},
+}
+
+var testRepos = []repo.Repo{
+	repo.Repo{
+		Name:     "hex_gleam_stdlib",
+		GoPrefix: "gleam/io",
+	},
+	repo.Repo{
+		Name:     "hex_gleeunit",
+		GoPrefix: "gleeunit/gleeunit",
+	},
+	repo.Repo{
+		Name:     "hex_gleam_stdlib",
+		GoPrefix: "gleam/int",
+	},
+	repo.Repo{
+		Name:     "hex_fl",
+		GoPrefix: "fl",
 	},
 }
 
@@ -276,7 +347,10 @@ func TestResolveGleam(t *testing.T) {
 				exts = append(exts, lang)
 			}
 			ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
-			rc := testRemoteCache(nil)
+
+			gc := GetGleamConfig(c).clone()
+			gc.repos = testRepos
+			c.Exts[languageName] = gc
 
 			for _, bf := range testCase.index {
 				buildPath := filepath.Join(filepath.FromSlash(bf.pkg), "BUILD")
@@ -305,7 +379,7 @@ func TestResolveGleam(t *testing.T) {
 			}
 			ix.Finish()
 			for i, r := range f.Rules {
-				mrslv.Resolver(r, "").Resolve(c, ix, rc, r, imports[i], label.New("", testCase.old.pkg, r.Name()))
+				mrslv.Resolver(r, "").Resolve(c, ix, nil, r, imports[i], label.New("", testCase.old.pkg, r.Name()))
 			}
 			f.Sync()
 			got := strings.TrimSpace(string(bzl.Format(f.File)))
