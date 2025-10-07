@@ -209,8 +209,8 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 	// For each of the Gleam file in the directory. Create a
 	for _, file := range args.RegularFiles {
 		ext := path.Ext(file)
-		filename := strings.TrimSuffix(file, ext)
-		if strings.HasSuffix(filename, "_test") || strings.HasSuffix(filename, "_tests") {
+		filename := file
+		if strings.HasSuffix(filename, "_test.gleam") || strings.HasSuffix(filename, "_tests.gleam") {
 			ext = gleamTestExt
 		}
 
