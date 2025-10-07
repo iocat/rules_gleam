@@ -9,7 +9,7 @@ on:
         required: true
         type: string
     secrets:
-      publish_token:
+      BCR_PUBLISH_TOKEN:
         required: true
   # In case of problems, let release engineers retry by manually dispatching
   # the workflow from the GitHub UI
@@ -19,6 +19,7 @@ on:
         description: git tag being released
         required: true
         type: string
+
 jobs:
   publish:
     uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.0.0
@@ -32,5 +33,4 @@ jobs:
       contents: write
       id-token: write
     secrets:
-      # Necessary to push to the BCR fork, and to open a pull request against a registry
-      publish_token: ${{ secrets.publish_token || secrets.BCR_PUBLISH_TOKEN }}
+      publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
