@@ -1,0 +1,34 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_binary", "gleam_erl_library", "gleam_library", "gleam_test")
+
+gleam_binary(
+    name = "mixedbinerlinternaltest",
+    srcs = ["main.gleam"],
+    _gazelle_imports = [
+        "erl:test_ffi",
+        "mixedbinerlinternaltest/internal",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+gleam_library(
+    name = "mixedbinerlinternaltest_internal",
+    srcs = ["internal.gleam"],
+    _gazelle_imports = ["erl:hello_ffi"],
+    visibility = ["//mixedbinerlinternaltest:__subpackages__"],
+)
+
+gleam_erl_library(
+    name = "mixedbinerlinternaltest_ffi",
+    srcs = [
+        "hello_ffi.erl",
+        "test_ffi.erl",
+    ],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
+)
+
+gleam_test(
+    name = "mixedbinerlinternaltest_test",
+    srcs = ["main_test.gleam"],
+    _gazelle_imports = ["main"],
+)

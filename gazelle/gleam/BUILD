@@ -17,9 +17,9 @@ go_library(
         "resolver.go",
         "utils.go",
     ],
-    data = [
+    data = DEPS + [
         "@gleam_hex_repositories_config//:BUILD",  # keep
-    ] + DEPS,
+    ],
     importpath = "github.com/iocat/rules_gleam/gazelle/gleam",
     deps = [
         "//gazelle/gleam/parser",
@@ -50,7 +50,9 @@ go_test(
         "language_generate_rules_test.go",
         "resolver_test.go",
     ],
-    data = glob(["gentestdata/**"]),
+    data = glob(["gentestdata/**"]) + DEPS + [
+        "@gleam_hex_repositories_config//:BUILD",  # keep
+    ],
     embed = [":gleam"],
     deps = [
         "@com_github_bazelbuild_buildtools//build",

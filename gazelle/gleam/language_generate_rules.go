@@ -32,6 +32,7 @@ type ruleKind string
 var (
 	ruleKindLib    ruleKind = "gleam_library"
 	ruleKindBin    ruleKind = "gleam_binary"
+	ruleKindTest   ruleKind = "gleam_test"
 	ruleKindErlLib ruleKind = "gleam_erl_library"
 )
 
@@ -204,16 +205,26 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 		name = "gleam_lib"
 	}
 
-	var gleamBundle, gleamFFIBundle *gleamModuleBundle
+	var gleamBundle, gleamTestBundle, gleamFFIBundle *gleamModuleBundle
 	// For each of the Gleam file in the directory. Create a
 	for _, file := range args.RegularFiles {
 		ext := path.Ext(file)
 		filename := strings.TrimSuffix(file, ext)
 		if strings.HasSuffix(filename, "_test") || strings.HasSuffix(filename, "_tests") {
-			continue
+			ext = gleamTestExt
 		}
 
 		switch ext {
+		case gleamTestExt:
+			if gleamTestBundle == nil {
+				gleamTestBundle = &gleamModuleBundle{kind: ruleKindTest, name: fmt.Sprintf("%s_test", name), modules: make(map[string]gleamModuleInfo), c: args.Config, rel: args.Rel}
+			}
+			module, err := getGleamModuleInfo(args.Dir, file, args.Rel)
+			if err != nil {
+				log.Print(err)
+				return lang.GenerateResult{}
+			}
+			gleamTestBundle.modules[module.moduleName] = *module
 		case gleamExt:
 			if gleamBundle == nil {
 				gleamBundle = &gleamModuleBundle{kind: ruleKindLib, name: name, modules: make(map[string]gleamModuleInfo), c: args.Config, rel: args.Rel}
@@ -269,6 +280,9 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 	}
 	if gleamFFIBundle != nil {
 		bundles = append(bundles, gleamFFIBundle)
+	}
+	if gleamTestBundle != nil {
+		bundles = append(bundles, gleamTestBundle)
 	}
 
 	importsList := []any{}

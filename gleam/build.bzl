@@ -248,6 +248,8 @@ def strip_src_prefix(ctx, src):
         str: The source path with the prefix stripped off.
     """
 
+    if src.startswith(ctx.bin_dir.path):
+        src = src.removeprefix(ctx.bin_dir.path + "/")
     prefix = ctx.attr.strip_src_prefix
     if not prefix.endswith("/"):
         prefix = prefix + "/"

@@ -1,5 +1,5 @@
 load("@gazelle//:def.bzl", "gazelle")
-load("@rules_gleam//gleam:defs.bzl", "gleam_binary", "gleam_erl_library")
+load("@rules_gleam//gleam:defs.bzl", "gleam_binary", "gleam_erl_library", "gleam_test")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -26,4 +26,13 @@ gleam_erl_library(
     name = "example_ffi",
     srcs = ["example_ffi.erl"],
     visibility = ["//visibility:public"],
+)
+
+gleam_test(
+    name = "gleam_lib_test",
+    srcs = ["example_test.gleam"],
+    deps = [
+        ":example",
+        "@hex_gleam_stdlib//gleam",
+    ],
 )

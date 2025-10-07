@@ -9,6 +9,7 @@ import (
 )
 
 const languageName = "gleam"
+
 type gleamLanguage struct{}
 
 var gleamKinds = map[string]rule.KindInfo{
@@ -16,7 +17,7 @@ var gleamKinds = map[string]rule.KindInfo{
 		MatchAttrs:    []string{"srcs"},
 		NonEmptyAttrs: map[string]bool{"srcs": true},
 		MergeableAttrs: map[string]bool{
-			"srcs":                true,
+			"srcs": true,
 		},
 		ResolveAttrs: map[string]bool{"deps": true},
 	},
@@ -24,7 +25,15 @@ var gleamKinds = map[string]rule.KindInfo{
 		MatchAttrs:    []string{"srcs"},
 		NonEmptyAttrs: map[string]bool{"srcs": true},
 		MergeableAttrs: map[string]bool{
-			"srcs":                true,
+			"srcs": true,
+		},
+		ResolveAttrs: map[string]bool{"deps": true},
+	},
+	"gleam_test": {
+		MatchAttrs:    []string{"srcs"},
+		NonEmptyAttrs: map[string]bool{"srcs": true},
+		MergeableAttrs: map[string]bool{
+			"srcs": true,
 		},
 		ResolveAttrs: map[string]bool{"deps": true},
 	},
@@ -32,7 +41,7 @@ var gleamKinds = map[string]rule.KindInfo{
 		MatchAttrs:    []string{"srcs"},
 		NonEmptyAttrs: map[string]bool{"srcs": true},
 		MergeableAttrs: map[string]bool{
-			"srcs":                true,
+			"srcs": true,
 		},
 	},
 }
@@ -40,7 +49,6 @@ var gleamKinds = map[string]rule.KindInfo{
 func (g *gleamLanguage) Kinds() map[string]rule.KindInfo {
 	return gleamKinds
 }
-
 
 func (g *gleamLanguage) ApparentLoads(moduleToApparentName func(string) string) []rule.LoadInfo {
 	rulesGleam := moduleToApparentName("rules_gleam")
@@ -54,6 +62,7 @@ func (g *gleamLanguage) ApparentLoads(moduleToApparentName func(string) string) 
 				"gleam_library",
 				"gleam_binary",
 				"gleam_erl_library",
+				"gleam_test",
 			},
 		},
 	}

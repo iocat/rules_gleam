@@ -6,11 +6,11 @@ import gleam/io
 import gleam/json
 import gleam/option.{None}
 
-type Cat {
+pub type Cat {
   Cat(name: String, lives: Int, flaws: option.Option(String))
 }
 
-fn cat_to_json(cat: Cat) -> String {
+pub fn cat_to_json(cat: Cat) -> String {
   json.object([
     #("name", json.string(cat.name)),
     #("lives", json.int(cat.lives)),

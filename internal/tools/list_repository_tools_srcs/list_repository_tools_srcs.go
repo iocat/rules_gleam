@@ -109,7 +109,7 @@ func main() {
 					depLines := strings.Split(strings.TrimSpace(string(match[1])), ",")
 					for _, depLine := range depLines {
 						repoDep := strings.Trim(strings.TrimSpace(depLine), "\"")
-						if !strings.HasPrefix(repoDep, "@") {
+						if !strings.HasPrefix(repoDep, "@") || strings.HasPrefix(repoDep, "@hex_") {
 							continue
 						}
 						repoDep = fmt.Sprintf("%s//:REPO", strings.Split(repoDep, "//")[0])

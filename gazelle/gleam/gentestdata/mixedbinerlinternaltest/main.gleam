@@ -1,4 +1,4 @@
-import mixed_bin_erl_internal/internal
+import mixedbinerlinternaltest/internal
 
 @external(erlang, "test_ffi", "naive")
 pub fn fibo_naive(a: Int) -> Int

@@ -35,7 +35,8 @@ use_repo(go_deps, "com_github_bazelbuild_buildtools", "com_github_bmatcuk_double
 # User of rules_gleam, can customize the default tool chain.
 gleam = use_extension("//:extensions.bzl", "gleam")
 gleam.toolchain(version = "v1.12.0")
-use_repo(gleam, "gleam_hex_repositories_config", "gleam_toolchains")
+gleam.deps(gleam_toml = "//:gleam.toml")
+use_repo(gleam, "gleam_hex_repositories_config", "gleam_toolchains", "hex_gleam_stdlib")
 
 register_toolchains("@gleam_toolchains//:all")
 

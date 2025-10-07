@@ -35,8 +35,8 @@ def _compiler_extension(module_ctx):
 
     gleam_toml = None
     for mod in module_ctx.modules:
-        if mod.name == "rules_gleam":
-            continue
+        # if mod.name == "rules_gleam":
+        #     continue
         for gleam_deps in mod.tags.deps:
             if gleam_toml != None:
                 fail("There should be one gleam.toml defined, existing declaration at %s" % module_ctx.path(gleam_toml))

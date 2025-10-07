@@ -63,7 +63,7 @@ def _gleam_binary_impl(ctx):
     transitive_runfiles = []
     for runfiles_attr in (
         ctx.attr.data,
-        # ctx.attr.deps,
+        ctx.attr.deps,
     ):
         for target in runfiles_attr:
             transitive_runfiles.append(target[DefaultInfo].default_runfiles)
@@ -101,6 +101,7 @@ def _gleam_binary_impl(ctx):
 
     return [
         DefaultInfo(files = depset(outputs.beam_files + [outputs.output_entry_point, outputs.beam_app_manifest]), default_runfiles = runfiles, executable = outputs.output_entry_point),
+        # Not meant to be imported by another gleam rule.
         GleamErlPackageInfo(
             module_names = outputs.module_names,
             erl_module = erl_mod_depset,

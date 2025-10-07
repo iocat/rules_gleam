@@ -37,5 +37,5 @@ func collect[K comparable, V any](things map[K]V) []K {
 }
 
 func isGleamLibrary(r *rule.Rule) bool {
-	return r.Kind() == "gleam_library" || r.Kind() == "gleam_erl_library"
+	return r.Kind() == "gleam_library" || r.Kind() == "gleam_erl_library" || r.Kind() == "gleam_binary"
 }

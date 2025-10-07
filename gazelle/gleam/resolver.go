@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	gleamTestExt = "_test.gleam"
 	gleamExt = ".gleam"
 	erlExt   = ".erl"
 

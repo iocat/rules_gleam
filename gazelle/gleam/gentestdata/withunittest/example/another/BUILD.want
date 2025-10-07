@@ -1,0 +1,10 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_test")
+
+gleam_test(
+    name = "another_test",
+    srcs = [
+        "slow_test.gleam",
+        "tester_test.gleam",
+    ],
+    _gazelle_imports = ["withunittest/example/deeper/okay"],
+)

@@ -1,0 +1,8 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_library")
+
+gleam_library(
+    name = "internal",
+    srcs = ["hello.gleam"],
+    _gazelle_imports = [],
+    visibility = ["//withunittest/example/deeper:__subpackages__"],
+)
