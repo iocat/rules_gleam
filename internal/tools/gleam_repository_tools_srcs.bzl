@@ -44,7 +44,7 @@ GLEAM_REPOSITORY_TOOLS_SRCS = [
 GLEAM_REPOSITORY_TOOLS_DEPS = {
     Label("@com_github_bazelbuild_buildtools//:REPO"): "github.com/bazelbuild/buildtools",
     Label("@com_github_bmatcuk_doublestar_v4//:REPO"): "github.com/bmatcuk/doublestar/v4",
-    Label("@com_github_burntsushi_toml//:REPO"): "github.com/burntsushi/toml",
+    Label("@com_github_burntsushi_toml//:REPO"): "github.com/BurntSushi/toml",
     Label("@com_github_google_go_cmp//:REPO"): "github.com/google/go-cmp",
     Label("@com_github_kr_pretty//:REPO"): "github.com/kr/pretty",
     Label("@com_github_kr_text//:REPO"): "github.com/kr/text",
