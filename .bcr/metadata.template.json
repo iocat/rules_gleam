@@ -1,0 +1,16 @@
+{
+  "homepage": "https://github.com/iocat/rules_gleam",
+  "maintainers": [
+    {
+      "name": "Thanh Ngo",
+      "email": "nokotavi@gmail.com",
+      "github": "iocat",
+      "github_user_id": 11292829
+    }
+  ],
+  "repository": [
+    "github:iocat/rules_gleam"
+  ],
+  "versions": [],
+  "yanked_versions": {}
+}
