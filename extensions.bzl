@@ -39,6 +39,9 @@ def _compiler_extension(module_ctx):
         #     continue
         for gleam_deps in mod.tags.deps:
             if gleam_toml != None:
+                if mod.name == "rules_gleam":
+                    # Needed for gleeunit test stdlib dependency.
+                    continue
                 fail("There should be one gleam.toml defined, existing declaration at %s" % module_ctx.path(gleam_toml))
             gleam_toml = gleam_deps.gleam_toml
 
