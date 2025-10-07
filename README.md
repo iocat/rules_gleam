@@ -1,4 +1,3 @@
-```markdown
 # rules_gleam
 
 This repository contains Bazel rules for working with the [Gleam](https://gleam.run) programming language.
@@ -214,6 +213,3 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-```
-
-Feel free to make any additional customizations or adjustments as needed!
