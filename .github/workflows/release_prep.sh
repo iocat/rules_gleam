@@ -9,7 +9,7 @@ PREFIX="rules_gleam-${TAG:1}"
 ARCHIVE="rules_gleam-$TAG.tar.gz"
 
 # NB: configuration for 'git archive' is in /.gitattributes
-git archive --format=tar --prefix=${PREFIX}/ ${TAG} >$ARCHIVE
+git archive --format=tar.gz --prefix=${PREFIX}/ ${TAG} >$ARCHIVE
 
 cat << EOF
 ## Using Bzlmod with Bazel 6
