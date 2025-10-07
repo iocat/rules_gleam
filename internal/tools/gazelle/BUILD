@@ -1,16 +1,5 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
-# go_binary(
-#     name = "gazelle",
-#     srcs = [
-#         "main.go",  # keep
-#     ],
-#     embed = [":gazelle_lib"],
-#     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
-#     tags = ["manual"],
-#     visibility = ["//visibility:public"],
-# )
-
 go_binary(
     name = "gazelle",
     embed = [":gazelle_lib"],

@@ -1,4 +1,4 @@
-module (
+module(
     name = "basic",
     version = "0.1.0",
 )
@@ -13,5 +13,4 @@ bazel_dep(name = "gazelle", version = "0.45.0")
 
 gleam = use_extension("@rules_gleam//:extensions.bzl", "gleam")
 gleam.deps(gleam_toml = "//:gleam.toml")
-gleam.toolchain(version = "latest")
-use_repo(gleam, "hex_gleam_json", "hex_gleam_stdlib", "gleam_toolchains", "hex_gleeunit")
+use_repo(gleam, "hex_gleam_json", "hex_gleam_stdlib", "hex_gleeunit")

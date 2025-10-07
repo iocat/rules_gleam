@@ -9,6 +9,7 @@ load("//internal:common.bzl", "extension_metadata")
 
 def _compiler_extension(module_ctx):
     direct_deps = {}
+    direct_dev_deps = {}
 
     non_default_registrations = {}
     for mod in module_ctx.modules:
@@ -24,15 +25,14 @@ def _compiler_extension(module_ctx):
         selected = sorted(non_default_registrations.keys(), reverse = True)[0]
         # buildifier: disable=print
         # print("NOTE: gleam toolchain has multiple redundancy, for versions {}, selected {}".format(", ".join(non_default_registrations.keys()), selected))
-
+        direct_deps["gleam_toolchains"] = True
     else:
         selected = default_toolchains[0][0].version
 
     register_toolchains(
         version = selected,
     )
-    direct_deps["gleam_toolchains"] = True
-
+    
     gleam_toml = None
     for mod in module_ctx.modules:
         # if mod.name == "rules_gleam":
@@ -56,11 +56,12 @@ def _compiler_extension(module_ctx):
     first_module = module_ctx.modules[0]
     if first_module.is_root and first_module.name == "rules_gleam":
         direct_deps["gleam_hex_repositories_config"] = True
+        direct_deps["gleam_toolchains"] = True
 
     return extension_metadata(
         module_ctx,
         root_module_direct_deps = direct_deps.keys(),
-        root_module_direct_dev_deps = [],
+        root_module_direct_dev_deps = direct_dev_deps.keys(),
         reproducible = True,
     )
 

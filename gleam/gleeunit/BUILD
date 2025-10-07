@@ -1,5 +1,10 @@
 load("@rules_gleam//gleam:defs.bzl", "gleam_library", "gleam_erl_library")
 
+exports_files([
+    "gleam.toml",
+    "manifest.toml",
+])
+
 gleam_erl_library(
     name = "gleeunit_ffi",
     srcs = [
