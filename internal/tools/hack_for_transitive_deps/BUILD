@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "hack_for_transitive_deps_lib",
@@ -15,4 +15,10 @@ go_library(
         "@org_golang_x_sys//unix",
         "@org_golang_x_tools_go_vcs//:vcs",
     ],
+)
+
+go_binary(
+    name = "hack_for_transitive_deps",
+    embed = [":hack_for_transitive_deps_lib"],
+    visibility = ["//:__subpackages__"],
 )

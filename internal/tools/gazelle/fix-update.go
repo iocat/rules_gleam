@@ -108,6 +108,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		return fmt.Errorf("unrecognized emit mode: %q", ucr.mode)
 	}
 	if uc.patchPath != "" && ucr.mode != "diff" {
+		log.Printf("[ERROR] -patch set but -mode is %s, not diff", ucr.mode)
 		return fmt.Errorf("-patch set but -mode is %s, not diff", ucr.mode)
 	}
 	if uc.patchPath != "" && !filepath.IsAbs(uc.patchPath) {
@@ -115,6 +116,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 	}
 	p, err := newProfiler(ucr.cpuProfile, ucr.memProfile)
 	if err != nil {
+		log.Printf("[ERROR] Failed to create profiler: %v", err)
 		return err
 	}
 	uc.profile = p
@@ -485,6 +487,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	}
 
 	if walkErr != nil {
+		log.Printf("[ERROR] Walk error: %v", walkErr)
 		return walkErr
 	}
 
@@ -499,7 +502,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 	}()
 	if err = maybePopulateRemoteCacheFromGoMod(c, rc); err != nil {
-		log.Print(err)
+		log.Printf("[ERROR] Failed to populate remote cache from go.mod: %v", err)
 	}
 	for _, v := range visits {
 		for i, r := range v.rules {
