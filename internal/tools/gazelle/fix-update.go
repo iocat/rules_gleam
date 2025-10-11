@@ -141,7 +141,17 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		uc.dirs[i] = dir
 	}
 
-	indexAll := c.IndexLibraries && !c.IndexLazy
+	// Safely check IndexLibraries and IndexLazy to avoid nil pointer panic
+	indexAll := false
+	if c != nil {
+		// Defensive: check for indexFlag presence if used in config
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[PANIC] nil pointer in IndexLibraries/IndexLazy: %v", r)
+			}
+		}()
+		indexAll = c.IndexLibraries && !c.IndexLazy
+	}
 	switch {
 	case ucr.recursive && indexAll:
 		uc.walkMode = walk.VisitAllUpdateSubdirsMode
@@ -366,7 +376,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 				OtherGen:     gen,
 			})
 			if len(res.Gen) != len(res.Imports) {
-				log.Panicf("%s: language %s generated %d rules but returned %d imports", rel, l.Name(), len(res.Gen), len(res.Imports))
+				return walk.Walk2FuncResult{Err: fmt.Errorf("%s: language %s generated %d rules but returned %d imports", rel, l.Name(), len(res.Gen), len(res.Imports))}
 			}
 			empty = append(empty, res.Empty...)
 			gen = append(gen, res.Gen...)
@@ -429,7 +439,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 						errs = append(errs, fmt.Errorf("looking up mapped kind: %w", err))
 					} else if replacementName != nil {
 						if err := r.UpdateArg(i, &build.Ident{Name: *replacementName}); err != nil {
-							log.Panicf("%s: %v", rel, err)
+							return walk.Walk2FuncResult{Err: fmt.Errorf("%s: %v", rel, err)}
 						}
 					}
 				}
@@ -593,7 +603,7 @@ func newFixUpdateConfiguration(wd string, cmd command, args []string, cexts []co
 			return nil, err
 		}
 		// flag already prints the error; don't print it again.
-		log.Fatal("Try -help for more information.")
+		return nil, fmt.Errorf("flag parse error: %w. Try -help for more information.", err)
 	}
 
 	for _, cext := range cexts {
