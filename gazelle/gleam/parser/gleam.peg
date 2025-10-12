@@ -152,7 +152,7 @@ FunctionParameters <- "(" _ first:FunctionParameter? rest:(_ "," _ FunctionParam
 LambdaFunction <- "fn" _ "(" _ first:LambdaFunctionParameter? rest:(_ "," _ LambdaFunctionParameter)*  _ ")" returnGroup:(_ "->" _ LambdaFunctionParameter)? {
     return nil, nil
 }
-LambdaFunctionParameter <- t:(Type / TupleType) { return t, nil }
+LambdaFunctionParameter <- t:(LambdaFunction / Type / TupleType) { return t, nil }
 
 FunctionParameter <- p:(LabeledNameParam / NameParam / DiscardParam) typ:TypeAnnotation? {
 	param, ok := p.(Parameter)

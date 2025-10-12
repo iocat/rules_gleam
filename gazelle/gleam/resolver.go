@@ -18,8 +18,8 @@ import (
 
 var (
 	gleamTestExt = "_test.gleam"
-	gleamExt = ".gleam"
-	erlExt   = ".erl"
+	gleamExt     = ".gleam"
+	erlExt       = ".erl"
 
 	errSkipImport    errorType = "skip"
 	errNotFound      errorType = "not found"
@@ -245,6 +245,9 @@ func (g *gleamLanguage) tryResolveExternalDeps(
 		depMod = "gleam_lib"
 	} else {
 		depMod = filepath.Base(depPkg)
+	}
+	if strings.HasPrefix(imp, "erl:") {
+		depMod = depMod + "_ffi"
 	}
 	l := label.New(module, depPkg, depMod)
 	return l, nil

@@ -32,9 +32,7 @@ func findModules(repoDir string) (*Result, error) {
 	stat, err := os.Stat(repoDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &Result{
-				GleamModules: []string{},
-			}, nil
+			return nil, fmt.Errorf("repo_dir does not exist: %s", repoDir)
 		}
 		return nil, fmt.Errorf("failed to stat repo_dir: %s: %v", repoDir, err)
 	}

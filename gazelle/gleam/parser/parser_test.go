@@ -180,6 +180,9 @@ fn fold_dict(
   value_decoder: fn(Dynamic) -> #(v, List(DecodeError)),
 ) -> #(Dict(k, v), List(DecodeError)) {}
 
+pub fn high_order_function(effect: fn(fn(msg) -> Nil) -> Nil) -> Effect(msg) {
+  Effect(..empty, synchronous: [task])
+}
 
 `,
 			ast: SourceFile{
@@ -187,6 +190,7 @@ fn fold_dict(
 					makeFunctionStmt(true, "main", makeParameters("test", nil), nil, nil),
 					makeFunctionStmt(true, "subfield", makeParameters("field_path", "List", "field_decoder", "Decoder", "next", nil), nil, string("Decoder")),
 					makeFunctionStmt(false, "fold_dict", makeParameters("acc", nil, "key", "Dynamic", "value", nil, "key_decoder", nil, "value_decoder", nil), nil, nil),
+					makeFunctionStmt(true, "high_order_function", makeParameters("effect", nil), nil, string("Effect")),
 				},
 			},
 		},

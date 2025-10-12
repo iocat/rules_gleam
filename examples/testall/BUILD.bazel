@@ -1,0 +1,19 @@
+load("@gazelle//:def.bzl", "gazelle")
+load("@rules_gleam//gleam:defs.bzl", "gleam_binary")
+
+exports_files(["gleam.toml"])
+
+gazelle(
+    name = "gazelle",
+    gazelle = "@rules_gleam//gazelle",
+)
+
+gleam_binary(
+    name = "gleam_lib",
+    srcs = ["main.gleam"],
+    visibility = ["//visibility:private"],
+    deps = [
+        "@hex_lustre//:gleam_lib",
+        "@testall//lustreserver",
+    ],
+)

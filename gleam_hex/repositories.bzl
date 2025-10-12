@@ -1,6 +1,4 @@
 # Accept gleam.toml, generate manifest.toml
-
-load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//internal:common.bzl", "env_execute", "executable_extension", "watch")
 
 TEMP_DIR = ".__hexpkg__"
@@ -27,7 +25,17 @@ package(
 )
 
 # To be referenced by @gleam_hex_repositories_config
-exports_files(["REPO.bazel"])
+filegroup(
+    name = "srcs_for_dep_analysis",
+    srcs = ["REPO.bazel", "gleam.toml"] + glob([
+        "**/BUILD.bazel",
+        "**/BUILD",
+        "**/*.gleam",
+        "**/*.hrl",
+        "**/*.erl",
+        "**/*.app"
+    ], allow_empty = True),
+)
 
 gazelle(
     name = "gazelle",
@@ -61,6 +69,7 @@ gazelle(
             result.stdout,
             result.stderr,
         ))
+    print(result.stdout)
 
 gleam_hex_repository = repository_rule(
     _gleam_hex_repository,
@@ -76,28 +85,14 @@ gleam_hex_repository = repository_rule(
 )
 
 def _gleam_hex_repositories_config_impl(ctx):
-    # ctx.watch(ctx.attr._find_gleam_modules)
     REPOES = {}
     for index, repo_file in enumerate(ctx.attr.repoes):
-        module_dir = ctx.path(".").dirname.get_child(ctx.path(".").basename.replace("gleam_hex_repositories_config", ctx.attr.modules[index]))
-        # Use relative path from the work root, which relies on the repoes being referenced by the root module.
-        # We could not use Label(label) to get the directory here as it isn't available in the analysis phase
-        # (Or so I thought.)
-        gleam_modules = ctx.execute([ctx.attr._find_gleam_modules, "--repo_dir", module_dir])
-        if gleam_modules.return_code:
-            fail("failed to get gleam modules for repo %s: %s" % (repo_file, gleam_modules.stderr))
-        modules = json.decode(gleam_modules.stdout).get("gleam_modules", default = [])
-        # modules = []
         REPOES[repo_file] = """gleam_repository(
     name = "{MODULE_NAME}",
     module_name = "{MODULE_NAME}",
-    gleam_modules = [
-{GLEAM_MODULES}
-    ],
     repo_file = "{REPO_FILE}",
 )""".format(
             MODULE_NAME = ctx.attr.modules[index],
-            GLEAM_MODULES = "\n".join(['        "%s",' % m for m in modules]),
             REPO_FILE = repo_file,
         )
 
@@ -124,11 +119,6 @@ gleam_hex_repositories_config = repository_rule(
     _gleam_hex_repositories_config_impl,
     doc = "Create a centralized configuration for all hex repositories declared in the manifest.toml.",
     attrs = {
-        "_find_gleam_modules": attr.label(
-            default = Label("@rules_gleam_internal_tools//:bin/find_gleam_modules"),
-            allow_single_file = True,
-            doc = "The get_gleam_modules tool to extract the gleam modules from the repository.",
-        ),
         "modules": attr.string_list(
             doc = "The list of repos module targets to extract the gleam modules from.",
         ),
@@ -188,7 +178,7 @@ def gleam_hex_repositories(module_ctx, *, gleam_toml, _get_hex_repos = Label("@r
     gleam_hex_repositories_config(
         name = "gleam_hex_repositories_config",
         modules = [_module_prefix + repo.get("module_name") for repo in repos],
-        repoes = ["@" + _module_prefix + repo.get("module_name") + "//:REPO.bazel" for repo in repos],
+        repoes = ["@" + _module_prefix + repo.get("module_name") + "//:srcs_for_dep_analysis" for repo in repos],
     )
 
     return [_module_prefix + repo.get("module_name") for repo in repos]

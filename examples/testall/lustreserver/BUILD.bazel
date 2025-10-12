@@ -1,0 +1,13 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_library")
+
+gleam_library(
+    name = "lustreserver",
+    srcs = ["server.gleam"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@hex_gleam_stdlib//gleam",
+        "@hex_lustre//:gleam_lib",
+        "@hex_lustre//lustre",
+        "@hex_lustre//lustre/element",
+    ],
+)

@@ -3,9 +3,11 @@ package gleam
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -34,7 +36,7 @@ func (c *GleamConfig) clone() *GleamConfig {
 	return &GleamConfig{
 		gleamVisibility: visibility,
 		externalRepo:    c.externalRepo,
-		repos: repos,
+		repos:           repos,
 	}
 }
 
@@ -51,7 +53,7 @@ func (g *gleamLanguage) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	c.Exts[languageName] = gc
 
 	if gc.externalRepo {
-		if err := maybePopulateRemoteCacheFromGleamToml(c, &gc.repos); err != nil {
+		if err := maybePopulateRemoteCacheFromGleamTomlForExternalRepo(c, &gc.repos); err != nil {
 			return err
 		}
 	} else {
@@ -68,7 +70,7 @@ type GleamToml struct {
 	Dependencies map[string]string `toml:"dependencies"`
 }
 
-func maybePopulateRemoteCacheFromGleamToml(c *config.Config, repos *[]repo.Repo) error {
+func maybePopulateRemoteCacheFromGleamTomlForExternalRepo(c *config.Config, repos *[]repo.Repo) error {
 	haveGleam := false
 	for name := range c.Exts {
 		if name == "gleam" {
@@ -104,35 +106,8 @@ func maybePopulateRemoteCacheFromGleamToml(c *config.Config, repos *[]repo.Repo)
 			return err
 		}
 
-		err = filepath.Walk(externalPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.IsDir() {
-				return nil
-			}
-
-			if strings.HasSuffix(path, ".gleam") {
-				relPath, err := filepath.Rel(externalPath, path)
-				if err != nil {
-					return err
-				}
-				importPath := strings.TrimSuffix(relPath, ".gleam")
-				importPath = strings.ReplaceAll(importPath, string(os.PathSeparator), "/")
-				*repos = append(*repos, repo.Repo{
-					Name:     module,
-					GoPrefix: importPath, // Using GoPrefix for now, will need to adjust for Gleam specific prefix if any
-				})
-			} else if strings.HasSuffix(path, ".erl") {
-				relPath := filepath.Base(path)
-				importPath := fmt.Sprintf("%s%s", "erl:", strings.TrimSuffix(relPath, ".erl"))
-				*repos = append(*repos, repo.Repo{
-					Name:     module,
-					GoPrefix: importPath, // Using GoPrefix for now, will need to adjust for Erlang specific prefix if any
-				})
-			}
-			return nil
-		})
+		foundRepos, err := walkDirForRepos(c, externalPath, module)
+		*repos = append(*repos, foundRepos...)
 		if err != nil {
 			return err
 		}
@@ -150,12 +125,12 @@ func getRepoNameFromPath(path string) string {
 }
 
 func maybePopulateRemoteCacheFromBzlMod(c *config.Config, repos *[]repo.Repo) error {
-	moduleName := c.ModuleToApparentName("gleam_hex_repositories_config")
-	if moduleName == "" {
-		moduleName = "gleam_hex_repositories_config"
+	configModuleName := c.ModuleToApparentName("gleam_hex_repositories_config")
+	if configModuleName == "" {
+		configModuleName = "gleam_hex_repositories_config"
 	}
-
-	buildFile, err := runfiles.Rlocation("gleam_hex_repositories_config/BUILD")
+	rf, _ := runfiles.New()
+	buildFile, err := rf.Rlocation(fmt.Sprintf("%s/BUILD", configModuleName))
 	if err != nil {
 		return err
 	}
@@ -163,23 +138,81 @@ func maybePopulateRemoteCacheFromBzlMod(c *config.Config, repos *[]repo.Repo) er
 	if err != nil {
 		return err
 	}
-	buildFileParsed, err := build.ParseBuild(fmt.Sprintf("%s:BUILD", moduleName), content)
+	buildFileParsed, err := build.ParseBuild(fmt.Sprintf("%s:BUILD", configModuleName), content)
 	if err != nil {
 		return err
 	}
+	configModuleDirName := filepath.Base(filepath.Dir(buildFile))
 
 	for _, gleamRepo := range buildFileParsed.Rules("gleam_repository") {
-		gleamModImps := gleamRepo.AttrStrings("gleam_modules")
 		module := gleamRepo.AttrString("module_name")
+		moduleDirName := strings.ReplaceAll(configModuleDirName, configModuleName, module)
 
-		for _, imp := range gleamModImps {
-			*repos = append(*repos, repo.Repo{
-				Name:     module,
-				GoPrefix: imp, // Using GoPrefix for now, will need to adjust for Gleam specific prefix if any
-			})
-		}
+		var mu sync.Mutex
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			parallelAppendRepos(c, rf, &mu, module, moduleDirName, repos)
+		})
+		wg.Wait()
+
 	}
 	return nil
+}
+
+func walkDirForRepos(c *config.Config, dir string, bazelModule string) (repos []repo.Repo, err error) {
+	gleamModules := []string{}
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".gleam") {
+			relPath, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+			modulePath := strings.TrimSuffix(relPath, ".gleam")
+			modulePath = strings.ReplaceAll(modulePath, string(os.PathSeparator), "/")
+			gleamModules = append(gleamModules, modulePath)
+		} else if strings.HasSuffix(path, ".erl") {
+			relPath := filepath.Base(path)
+			importPath := fmt.Sprintf("%s%s", "erl:", strings.TrimSuffix(relPath, ".erl"))
+			gleamModules = append(gleamModules, importPath)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, gleamModule := range gleamModules {
+		repos = append(repos, repo.Repo{
+			Name:     bazelModule,
+			GoPrefix: gleamModule, // Using GoPrefix for now, will need to adjust for Gleam specific prefix if any
+		})
+	}
+	return repos, nil
+
+}
+
+func parallelAppendRepos(c *config.Config, rf *runfiles.Runfiles, mu *sync.Mutex, module string, moduleDirName string, repos *[]repo.Repo) {
+	moduleBuild, err := rf.Rlocation(fmt.Sprintf("%s/BUILD", moduleDirName))
+	if err != nil {
+		log.Printf("Could not find module directory for %s: %v", module, err)
+		return
+	}
+	if moduleBuild == "" {
+		log.Printf("Could not find module directory for %s", module)
+		return
+	}
+
+	foundRepos, _ := walkDirForRepos(c, filepath.Dir(moduleBuild), module)
+	mu.Lock()
+	defer mu.Unlock()
+	*repos = append(*repos, foundRepos...)
 }
 
 func (g *gleamLanguage) KnownDirectives() []string {
