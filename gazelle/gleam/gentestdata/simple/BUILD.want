@@ -1,7 +1,7 @@
 load("@rules_gleam//gleam:defs.bzl", "gleam_binary")
 
 gleam_binary(
-    name = "simple",
+    name = "hello",
     srcs = ["hello.gleam"],
     _gazelle_imports = [],
     visibility = ["//visibility:private"],

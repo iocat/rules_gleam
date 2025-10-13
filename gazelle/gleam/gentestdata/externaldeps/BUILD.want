@@ -1,7 +1,7 @@
 load("@rules_gleam//gleam:defs.bzl", "gleam_binary")
 
 gleam_binary(
-    name = "externaldeps",
+    name = "with_external_dep",
     srcs = ["with_external_dep.gleam"],
     _gazelle_imports = [
         "gleam/io",

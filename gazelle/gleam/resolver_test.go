@@ -216,7 +216,8 @@ var testCases = []resolveTestCase{
 						visibility = ["//visibility:private"],
 						deps = [
 							"//foo/bar",
-							"@hex_gleam_stdlib//gleam",
+							"@hex_gleam_stdlib//gleam:int",
+							"@hex_gleam_stdlib//gleam:io",
 							"@hex_gleeunit//gleeunit",
 						],
 					)
@@ -306,8 +307,8 @@ var testCases = []resolveTestCase{
 							":test_internal",
 							"//test/internal",
 							"//too/many/level/deep",
-							"@hex_fl//:gleam_lib",
-							"@hex_gleam_stdlib//gleam",
+							"@hex_fl//:fl",
+							"@hex_gleam_stdlib//gleam:io",
 						],
 					)
 			`,

@@ -1,16 +1,5 @@
 load("@rules_gleam//gleam:defs.bzl", "gleam_binary", "gleam_library")
 
-gleam_binary(
-    name = "multiplegleamonemain",
-    srcs = ["file.gleam"],
-    _gazelle_imports = [
-        "multiplegleamonemain/character",
-        "multiplegleamonemain/faction",
-        "multiplegleamonemain/guild",
-    ],
-    visibility = ["//visibility:private"],
-)
-
 gleam_library(
     name = "character",
     srcs = ["character.gleam"],
@@ -23,6 +12,17 @@ gleam_library(
     srcs = ["faction.gleam"],
     _gazelle_imports = [],
     visibility = ["//visibility:public"],
+)
+
+gleam_binary(
+    name = "file",
+    srcs = ["file.gleam"],
+    _gazelle_imports = [
+        "multiplegleamonemain/character",
+        "multiplegleamonemain/faction",
+        "multiplegleamonemain/guild",
+    ],
+    visibility = ["//visibility:private"],
 )
 
 gleam_library(

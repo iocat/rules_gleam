@@ -316,6 +316,13 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 	if len(rulesList) != len(importsList) {
 		panic("Rules and imports should be of the same size. Check implementation.")
 	}
+	sortFunc := func (i, j int) bool {
+		r1 := rulesList[i]
+		r2 := rulesList[i]
+		return r1.Name() < r2.Name()
+	}
+	sort.Slice(importsList, sortFunc)
+	sort.Slice(rulesList, sortFunc)
 	// We don't add/remove rules.
 	return lang.GenerateResult{
 		Imports:     importsList,
