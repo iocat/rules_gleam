@@ -34,13 +34,29 @@ func makeFunctionStmt(public bool, name string, params []Parameter, attrs []Exte
 	})
 }
 
-func makeImportStmt(module string, unqualifies ...string) Node {
+func makeImportStmt(module string, unqualifiesOrTarget ...string) Node {
+	target := ""
+	alias := ""
 	unqualifiedImports := []UnqualifiedImport{}
-	for _, u := range unqualifies {
-		unqualifiedImports = append(unqualifiedImports, UnqualifiedImport{Name: strings.TrimPrefix(u, "type:"), IsType: strings.HasPrefix(u, "type:")})
+	for _, u := range unqualifiesOrTarget {
+		if strings.HasPrefix(u, "target:") {
+			target = strings.TrimPrefix(u, "target:")
+		} else if strings.HasPrefix(u, "alias:") {
+			alias = strings.TrimPrefix(u, "alias:")
+		} else {
+			unqualifiedImports = append(unqualifiedImports, UnqualifiedImport{Name: strings.TrimPrefix(u, "type:"), IsType: strings.HasPrefix(u, "type:")})
+		}
 	}
 	imp := Import{
 		Module: module,
+	}
+	if len(target) > 0 {
+		imp.Target = &TargetAttribute{
+			TargetLang: target,
+		}
+	}
+	if len(alias) > 0 {
+		imp.Alias = alias
 	}
 	if len(unqualifiedImports) > 0 {
 		imp.Unqualified = unqualifiedImports
@@ -103,6 +119,9 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
+@target(javascript)
+import houdini/internal/escape
+
 
 pub fn main() {
 	echo "Hello, World!"
@@ -119,6 +138,7 @@ pub fn main() {
 					makeImportStmt("gleam/io"),
 					makeImportStmt("gleam/list"),
 					makeImportStmt("gleam/option", "type:Option", "None", "Some"),
+					makeImportStmt("houdini/internal/escape", "target:javascript"),
 					makeFunctionStmt(true, "main", nil, nil, nil),
 				},
 			},
@@ -333,6 +353,51 @@ pub fn from_list(list: List(#(k, v))) -> Dict(k, v) {
 					makeParameters("first", "Decoder", "or alternatives", "List"), nil, string("Decoder")),
 				makeFunctionStmt(true, "from_list", makeParameters("list", "List"), nil, string("Dict")),
 			}},
+		},
+		{
+			desc: "houdini",
+			input: `@target(javascript)
+import houdini/internal/escape_js as escape
+
+@target(erlang)
+import houdini/internal/escape_erl as escape
+
+/// Escapes a string to be safely used inside an HTML document by escaping
+/// the following characters:
+///
+///` +
+				"///   - `<` becomes `&lt;`" +
+				"///   - `>` becomes `&gt;`" +
+				"///   - `&` becomes `&amp;`" +
+				"///   - `\"` becomes `&quot;`" +
+				"///   - `'` becomes `&#39;`." +
+				`///
+/// ## Examples
+///
+/// assert escape("wibble & wobble") == "wibble &amp; wobble"
+/// assert escape("wibble > wobble") == "wibble &gt; wobble"
+`, ast: SourceFile{
+				Statements: []Node{
+					makeImportStmt("houdini/internal/escape_js", "alias:escape", "target:javascript"),
+					makeImportStmt("houdini/internal/escape_erl", "alias:escape", "target:erlang"),
+				},
+			},
+		},
+		{
+			desc: "houdini",
+			input: `
+/// An alernative ok type used within Erlang/OTP
+pub type Result2(data1, data2, error) {
+  Ok(data1, data2)
+  Error(error)
+}
+
+@target(erlang)
+type Token =
+  List(Nil)
+`, ast: SourceFile{
+				Statements: []Node{},
+			},
 		},
 	}
 

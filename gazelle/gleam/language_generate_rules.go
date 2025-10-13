@@ -11,7 +11,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/iocat/rules_gleam/gazelle/gleam/parser"
-	_ "github.com/kr/pretty"
 
 	"path"
 	"path/filepath"
@@ -73,18 +72,6 @@ func (gmb *gleamModuleBundle) imports(filterModule func(string) bool) []string {
 	return importStrings
 }
 
-func (gmb *gleamModuleBundle) nonInternalImports() []string {
-	return gmb.imports(func(m string) bool {
-		return m != "internal"
-	})
-}
-
-func (gmb *gleamModuleBundle) internalImports() []string {
-	return gmb.imports(func(m string) bool {
-		return m == "internal"
-	})
-}
-
 func (gmb *gleamModuleBundle) sources() []string {
 	files := []string{}
 	for _, module := range gmb.modules {
@@ -118,6 +105,11 @@ func (gmb *gleamModuleBundle) nonInternalVisibility() []string {
 	visibility := configVisibility
 	// Currently processing an internal module (in a internal directory.)
 	if relIndex >= 0 {
+		// We do not enforce strict "internal" module fora  hex repository.
+		// In Gleam, internal modules are recommendations only.
+		if GetGleamConfig(gmb.c).externalRepo {
+			return []string{"//visibility:public"}
+		}
 		parent := strings.TrimSuffix(gmb.rel[:relIndex], "/")
 		visibility = append(visibility, fmt.Sprintf("//%s:__subpackages__", parent))
 	} else if len(configVisibility) == 0 {
@@ -129,13 +121,13 @@ func (gmb *gleamModuleBundle) nonInternalVisibility() []string {
 	return visibility
 }
 
-func (gmb *gleamModuleBundle) internalModule() *gleamModuleInfo {
+func (gmb *gleamModuleBundle) isInternalModule() bool {
 	for _, module := range gmb.modules {
 		if module.moduleName == "internal" {
-			return &module
+			return true
 		}
 	}
-	return nil
+	return false
 }
 
 func (gmb *gleamModuleBundle) setSourcePrefix(r *rule.Rule) {
@@ -150,12 +142,13 @@ func (gmb *gleamModuleBundle) setSourcePrefix(r *rule.Rule) {
 }
 
 func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
-	internalModule := gmb.internalModule()
+	isInternalModule := gmb.isInternalModule()
 	rules := []*rule.Rule{}
 	r := rule.NewRule(string(gmb.kind), gmb.name)
 	r.SetAttr("srcs", filter(gmb.sources(), func(m string) bool {
-		return internalModule == nil || m != internalModule.file
+		return true
 	}))
+
 	gmb.setSourcePrefix(r)
 	switch gmb.kind {
 	case ruleKindBin:
@@ -166,17 +159,16 @@ func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 			r.SetAttr("main_module", gmb.mainModuleName)
 		}
 	case ruleKindLib, ruleKindErlLib:
-		r.SetAttr("visibility", gmb.nonInternalVisibility())
+		if isInternalModule {
+			// r.SetAttr("visibility", gmb.nonInternalVisibility())
+			r.SetAttr("visibility",  []string{fmt.Sprintf("//%s:__subpackages__", gmb.rel)})
+		} else {
+			r.SetAttr("visibility", gmb.nonInternalVisibility())
+		}
 	}
 
-	rules = append(rules, r)
-	if internalModule != nil {
-		internalR := rule.NewRule("gleam_library", gmb.name+"_internal")
-		internalR.SetAttr("srcs", []string{internalModule.file})
-		internalR.SetAttr("visibility", []string{fmt.Sprintf("//%s:__subpackages__", gmb.rel)})
-		gmb.setSourcePrefix(internalR)
-
-		rules = append(rules, internalR)
+	if len(r.AttrStrings("srcs")) != 0 {
+		rules = append(rules, r)
 	}
 
 	imports := gmb.generateImports()
@@ -190,11 +182,7 @@ func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 
 /** Returns import, must be of the same size as generate rules returned. */
 func (gmb *gleamModuleBundle) generateImports() []any {
-	imports := []any{gmb.nonInternalImports()}
-	im := gmb.internalModule()
-	if im != nil {
-		imports = append(imports, gmb.internalImports())
-	}
+	imports := []any{gmb.imports(func(m string) bool { return true })}
 	return imports
 }
 
@@ -205,7 +193,8 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 		name = "gleam_lib"
 	}
 
-	var gleamBundle, gleamTestBundle, gleamFFIBundle *gleamModuleBundle
+	var gleamBundle, gleamTestBundle *gleamModuleBundle
+	var ffiBundles []*gleamModuleBundle
 	// For each of the Gleam file in the directory. Create a
 	for _, file := range args.RegularFiles {
 		ext := path.Ext(file)
@@ -236,50 +225,82 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 			}
 			gleamBundle.modules[module.moduleName] = *module
 			if module.hasMainFn {
-				if len(name) == 0 {
-					gleamBundle.name = "gleam_bin"
-				}
+
 				gleamBundle.mainModuleName = module.moduleName
 				gleamBundle.kind = ruleKindBin
 			}
 		case erlExt:
-			if gleamFFIBundle == nil {
-				gleamFFIBundle = &gleamModuleBundle{
-					kind:    ruleKindErlLib,
-					name:    fmt.Sprintf("%s_ffi", name),
-					modules: make(map[string]gleamModuleInfo),
-					c:       args.Config,
-					rel:     args.Rel,
-				}
-			}
-
 			nonNsModule := strings.TrimSuffix(filepath.Base(file), erlExt)
 			// Precompiled Gleam module with "@" means these files are part of Gleam compilation
 			// with the provided namespace separator, so we exclude them.
 			if strings.Contains(nonNsModule, "@") {
 				continue
 			}
-			if _, ok := gleamFFIBundle.modules[nonNsModule]; ok {
-				log.Printf("Duplicate Erl FFI module name, please consider rename, Gleam FFI implementation doesn't have dir-like namespace: %s", nonNsModule)
-				if len(gleamFFIBundle.modules) == 0 {
-					gleamFFIBundle = nil
-					continue
-				}
+			ffiBundle := &gleamModuleBundle{
+				kind:    ruleKindErlLib,
+				name:    fmt.Sprintf("%s_ffi", nonNsModule),
+				modules: make(map[string]gleamModuleInfo),
+				c:       args.Config,
+				rel:     args.Rel,
 			}
-			gleamFFIBundle.modules[nonNsModule] = gleamModuleInfo{
+			ffiBundle.modules[nonNsModule] = gleamModuleInfo{
 				moduleName:    nonNsModule,
 				file:          file,
 				moduleParents: []string{},
 				imports:       []string{}, // No imports for Erl FFI
 			}
+			ffiBundles = append(ffiBundles, ffiBundle)
 		}
 	}
 
 	if gleamBundle != nil {
-		bundles = append(bundles, gleamBundle)
+		if gleamBundle.kind == ruleKindLib {
+			for modName, moduleInfo := range gleamBundle.modules {
+				libBundle := &gleamModuleBundle{
+					kind:    ruleKindLib,
+					name:    modName,
+					modules: map[string]gleamModuleInfo{modName: moduleInfo},
+					rel:     gleamBundle.rel,
+					c:       gleamBundle.c,
+				}
+				bundles = append(bundles, libBundle)
+			}
+		} else { // ruleKindBin
+			var mainModuleInfo gleamModuleInfo
+			// Find the main module info
+			for modName, moduleInfo := range gleamBundle.modules {
+				if modName == gleamBundle.mainModuleName {
+					mainModuleInfo = moduleInfo
+					break
+				}
+			}
+
+			binBundle := &gleamModuleBundle{
+				kind:           ruleKindBin,
+				name:           gleamBundle.mainModuleName,
+				modules:        map[string]gleamModuleInfo{gleamBundle.mainModuleName: mainModuleInfo},
+				mainModuleName: gleamBundle.mainModuleName,
+				rel:            gleamBundle.rel,
+				c:              gleamBundle.c,
+			}
+			bundles = append(bundles, binBundle)
+
+			for modName, moduleInfo := range gleamBundle.modules {
+				if modName != gleamBundle.mainModuleName {
+					libBundle := &gleamModuleBundle{
+						kind:    ruleKindLib,
+						name:    modName,
+						modules: map[string]gleamModuleInfo{modName: moduleInfo},
+						rel:     gleamBundle.rel,
+						c:       gleamBundle.c,
+					}
+					bundles = append(bundles, libBundle)
+				}
+			}
+		}
 	}
-	if gleamFFIBundle != nil {
-		bundles = append(bundles, gleamFFIBundle)
+	if len(ffiBundles) > 0 {
+		bundles = append(bundles, ffiBundles...)
 	}
 	if gleamTestBundle != nil {
 		bundles = append(bundles, gleamTestBundle)
@@ -291,6 +312,7 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 		importsList = append(importsList, bundle.generateImports()...)
 		rulesList = append(rulesList, bundle.generateRules()...)
 	}
+
 	if len(rulesList) != len(importsList) {
 		panic("Rules and imports should be of the same size. Check implementation.")
 	}
@@ -309,7 +331,7 @@ func getGleamModuleInfo(dir, file string, rel string) (*gleamModuleInfo, error) 
 	imports := map[string]bool{}
 	hasMainFunction := false
 	parseTree, err := parser.ParseFile(filePath, parser.Debug(false))
-	if err != nil {
+	if err != nil || parseTree == nil {
 		log.Printf("failed to parse file %s: %v", filePath, err)
 		return nil, nil
 	}

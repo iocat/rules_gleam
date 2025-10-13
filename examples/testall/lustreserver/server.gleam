@@ -1,5 +1,4 @@
 import gleam/int
-import lustre
 import lustre/element.{text}
 import lustre/element/html.{div, button, p}
 import lustre/event.{on_click}
@@ -8,12 +7,12 @@ pub fn init(_flags) {
   0
 }
 
-type Msg {
+pub type Msg {
   Incr
   Decr
 }
 
-pub fn update(model, msg) {
+pub fn update(model, msg: Msg) {
   case msg {
     Incr -> model + 1
     Decr -> model - 1

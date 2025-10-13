@@ -9,11 +9,11 @@ gazelle(
 )
 
 gleam_binary(
-    name = "gleam_lib",
+    name = "main",
     srcs = ["main.gleam"],
     visibility = ["//visibility:private"],
     deps = [
-        "@hex_lustre//:gleam_lib",
-        "@testall//lustreserver",
+        "@hex_lustre//:lustre",
+        "@testall//lustreserver:server",
     ],
 )

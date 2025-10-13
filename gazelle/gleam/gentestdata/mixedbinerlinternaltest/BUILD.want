@@ -11,18 +11,22 @@ gleam_binary(
 )
 
 gleam_library(
-    name = "mixedbinerlinternaltest_internal",
+    name = "internal",
     srcs = ["internal.gleam"],
     _gazelle_imports = ["erl:hello_ffi"],
     visibility = ["//mixedbinerlinternaltest:__subpackages__"],
 )
 
 gleam_erl_library(
-    name = "mixedbinerlinternaltest_ffi",
-    srcs = [
-        "hello_ffi.erl",
-        "test_ffi.erl",
-    ],
+    name = "hello_ffi_ffi",
+    srcs = ["hello_ffi.erl"],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
+)
+
+gleam_erl_library(
+    name = "test_ffi_ffi",
+    srcs = ["test_ffi.erl"],
     _gazelle_imports = [],
     visibility = ["//visibility:public"],
 )

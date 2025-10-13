@@ -1,7 +1,7 @@
 load("@rules_gleam//gleam:defs.bzl", "gleam_library", "gleam_test")
 
 gleam_library(
-    name = "deeper",
+    name = "okay",
     srcs = ["okay.gleam"],
     _gazelle_imports = [],
     visibility = ["//visibility:public"],

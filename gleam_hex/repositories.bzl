@@ -69,7 +69,6 @@ gazelle(
             result.stdout,
             result.stderr,
         ))
-    print(result.stdout)
 
 gleam_hex_repository = repository_rule(
     _gleam_hex_repository,

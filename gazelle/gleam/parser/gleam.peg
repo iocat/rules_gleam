@@ -65,10 +65,14 @@ type Function struct {
     ReturnType Type
     ExternalAttributes []ExternalAttribute
 }
+type TargetAttribute struct {
+    TargetLang string
+}
 type Import struct {
 	Module      string
 	Unqualified []UnqualifiedImport
 	Alias       string
+    Target *TargetAttribute
 }
 type ExternalAttribute struct {
     TargetLang string
@@ -91,7 +95,7 @@ type UnqualifiedImport struct {
 
 SourceFile <- _ first:(Import / Function / IgnoredContent)? rest:(_ (Import / Function / IgnoredContent))* _ EOF {
 	if first == nil {
-		return nil, nil
+		return SourceFile{Statements: []Node{}}, nil
 	}
     validStatements := []Node{first}
     if rest != nil {
@@ -106,13 +110,13 @@ SourceFile <- _ first:(Import / Function / IgnoredContent)? rest:(_ (Import / Fu
     return SourceFile{Statements: validStatements}, nil
 }
 
-Function <- attrs:ExternalAttribute* pub:("pub" __)? "fn" __ name:Name _ params:FunctionParameters returnGroup:(_ "->" _ Type)? _ body:IgnoredBlock? {
+Function <- targetAttrs1:(TargetAttribute)* exattrs:(ExternalAttribute)* targetAttrs2:(TargetAttribute)* pub:("pub" __)? "fn" __ name:Name _ params:FunctionParameters returnGroup:(_ "->" _ Type)? _ body:IgnoredBlock? {
     f := Function{Name: name.(string)}
     if pub != nil { f.Public = true }
     if params != nil { f.Parameters = params.([]Parameter) }
     if returnGroup != nil { f.ReturnType = returnGroup.([]any)[3].(Type) }
-    if attrs != nil {
-        f.ExternalAttributes = toSlice[ExternalAttribute](attrs)
+    if exattrs != nil {
+        f.ExternalAttributes = toSlice[ExternalAttribute](exattrs)
     }
     return f, nil
 }
@@ -179,7 +183,7 @@ Identifier <- Name { return Identifier{Name: string(c.text)}, nil }
 Discard <- DiscardName { return Discard{Name: string(c.text)}, nil }
 Label <- Name { return string(c.text), nil }
 
-IgnoredContent <- (!("import" / "@external(" / "fn" __ / "pub" __ "fn" __  ) .)+ { return nil, nil }
+IgnoredContent <- (!(TargetAttribute __ "fn" / TargetAttribute __ "import" / TargetAttribute __ "pub" __ "fn" / "import" / "@external(" / "fn" __ / "pub" __ "fn" __  ) .)+ { return nil, nil }
 IgnoredBlock <- "{" (IgnoredBlock / !"}" .)* "}" { return nil, nil }
 
 // -----------------------------------------------------------------------------
@@ -195,13 +199,26 @@ Comment <- "//" (!'\n' .)* { return nil, nil }
 // ## Module-level & Top-level Statements
 // -----------------------------------------------------------------------------
 
-Import <- "import" __ mod:Module unqual:(_ "." _ UnqualifiedImports)? alias:(_ "as" __ Identifier)? {
+TargetAttribute <- "@" _ "target" _ "(" _ args:TargetArgs _ ")" _ {
+	return args, nil
+}
+
+TargetArgs <- target:("erlang" / "javascript") {
+	return &TargetAttribute{
+		TargetLang:   string(target.([]uint8)),
+	}, nil
+}
+
+Import <- targetAttribute:TargetAttribute? _ "import" __ mod:Module unqual:(_ "." _ UnqualifiedImports)? alias:(_ "as" __ Identifier)? {
     imp := Import{Module: mod.(string)}
     if alias != nil {
         imp.Alias = alias.([]any)[3].(Identifier).Name
     }
     if unqual != nil {
         imp.Unqualified = unqual.([]any)[3].([]UnqualifiedImport)
+    }
+    if target, ok := targetAttribute.(*TargetAttribute); ok {
+        imp.Target = target
     }
     return imp, nil
 }

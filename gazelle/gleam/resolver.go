@@ -221,6 +221,7 @@ func (g *gleamLanguage) resolveGleam(c *config.Config, ix *resolve.RuleIndex, rc
 	} else if len(results) > 1 {
 		return label.NoLabel, &gleamGazelleError{msg: fmt.Sprintf("multiple rules (%s and %s) may be imported with %q from %s", results[0].Label, results[1].Label, imp, from), errorType: errMultipleFound}
 	}
+
 	return results[0].Label, nil
 }
 
@@ -237,18 +238,29 @@ func (g *gleamLanguage) tryResolveExternalDeps(
 		return label.NoLabel, err
 	}
 	depPkg := filepath.Dir(pkg)
+	gleamModule := filepath.Base(pkg)
 	if depPkg == "." {
 		depPkg = ""
 	}
-	depMod := ""
-	if depPkg == "" {
-		depMod = "gleam_lib"
-	} else {
-		depMod = filepath.Base(depPkg)
-	}
-	if strings.HasPrefix(imp, "erl:") {
-		depMod = depMod + "_ffi"
+	depMod := externalGetEquivalentGleamImport(gleamModule)
+	if strings.Contains(depMod, "/") {
+		depPkg = depPkg + filepath.Dir(depMod)
+		depMod = filepath.Base(depMod)
 	}
 	l := label.New(module, depPkg, depMod)
 	return l, nil
+}
+
+func externalGetEquivalentGleamImport(
+	imp string,
+) string {
+	if strings.HasPrefix(imp, "erl:") {
+		erlPath, _ := strings.CutPrefix(imp, "erl:")
+		if strings.Contains(imp, "@") {
+			return strings.ReplaceAll(erlPath, "@", "/")
+		} else {
+			return fmt.Sprintf("%s_ffi", erlPath)
+		}
+	}
+	return imp
 }
