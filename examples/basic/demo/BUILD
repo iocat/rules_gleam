@@ -8,11 +8,11 @@ gleam_library(
     name = "demo",
     srcs = ["demo.gleam"],
     visibility = ["//visibility:public"],
-    deps = [":demo_internal"],
+    deps = [":internal"],
 )
 
 gleam_library(
-    name = "demo_internal",
+    name = "internal",
     srcs = ["internal.gleam"],
     visibility = ["//demo:__subpackages__"],
 )
