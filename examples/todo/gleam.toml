@@ -1,5 +1,4 @@
 name = "todo"
-version = "0.1.0"
 
 [dependencies]
 gleam_stdlib = ">= 0.51.0 and < 2.0.0"
@@ -8,6 +7,4 @@ gleam_json = ">= 3.0.2 and < 4.0.0"
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
 
-[scripts]
-test = "gleam test"
-run = "gleam run -m todo"
+
