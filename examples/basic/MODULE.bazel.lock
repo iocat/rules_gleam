@@ -165,7 +165,7 @@
   "moduleExtensions": {
     "@@rules_erlang+//bzlmod:extensions.bzl%erlang_config": {
       "general": {
-        "bzlTransitiveDigest": "LnWmtqo2JKUEspBWbQXkJ+zlKL3PyPctpHHyK0/U4MI=",
+        "bzlTransitiveDigest": "Hu32F6vz3y8dYVjG00yqCpbUEZEIcKykDj7JEMgMy/c=",
         "usagesDigest": "2mlGUm86FPZOH0K+ht1JoV81hZZCZOrHNJzRjlwuZQo=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
@@ -204,7 +204,7 @@
     },
     "@@rules_kotlin+//src/main/starlark/core/repositories:bzlmod_setup.bzl%rules_kotlin_extensions": {
       "general": {
-        "bzlTransitiveDigest": "hUTp2w+RUVdL7ma5esCXZJAFnX7vLbVfLd7FwnQI6bU=",
+        "bzlTransitiveDigest": "OlvsB0HsvxbR8ZN+J9Vf00X/+WVz/Y/5Xrq2LgcVfdo=",
         "usagesDigest": "QI2z8ZUR+mqtbwsf2fLqYdJAkPOHdOV+tF2yVAUgRzw=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
