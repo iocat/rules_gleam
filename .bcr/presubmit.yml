@@ -1,15 +1,14 @@
 bcr_test_module:
   module_path: "examples/httpserver"
   matrix:
-    # No testing on windows, consider supporting! 
     bazel: [8.x]
   tasks:
     ubuntu2204:
       shell_commands:
-      - wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb
-      - sudo dpkg -i erlang-solutions_1.0_all.deb
-      - sudo apt-get update
-      - sudo apt-get install -y esl-erlang
+      - curl https://mise.run | sh
+      - ~/.local/bin/mise --version
+      - echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc
+      - mise use -g erlang@28
       name: "Build/test module on Ubuntu"
       platform: ubuntu2204
       bazel: ${{ bazel }}
@@ -17,14 +16,18 @@ bcr_test_module:
       - "..."
       test_targets:
       - "..."
-    macos:
-      shell_commands:
-      - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-      - brew install erlang
-      name: "Run test module on Mac OSX"
-      platform: macos
-      bazel: ${{ bazel }}
-      build_targets:
-      - "..."
-      test_targets:
-      - "..."
+    # BCR buildkite for macos can't use sudo, so we can't install erlang. As
+    # of right now, rules_gleam does not support hermetic build and require
+    # erlang to be installed. We're skipping for now.
+    #
+    # macos:
+    #   shell_commands:
+    #   - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    #   - brew install erlang
+    #   name: "Run test module on Mac OSX"
+    #   platform: macos
+    #   bazel: ${{ bazel }}
+    #   build_targets:
+    #   - "..."
+    #   test_targets:
+    #   - "..."
