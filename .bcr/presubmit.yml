@@ -5,7 +5,7 @@ bcr_test_module:
   tasks:
     ubuntu2204:
       environment:
-        PATH: $HOME/.local/bin
+        PATH: $HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       shell_commands:
       - curl https://mise.run | sh
       - ~/.local/bin/mise --version
