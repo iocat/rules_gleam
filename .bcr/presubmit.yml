@@ -4,6 +4,9 @@ bcr_test_module:
     bazel: [8.x]
   tasks:
     ubuntu2204:
+      incompatible_flags:
+        # We are having non-hermetic builds
+        "--incompatible_strict_action_env=": []
       environment:
         PATH: $HOME/.local/share/mise/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       shell_commands:
