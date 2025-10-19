@@ -8,6 +8,7 @@ bcr_test_module:
       - curl https://mise.run | sh
       - ~/.local/bin/mise --version
       - echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc
+      - source ~/.bashrc
       - mise use -g erlang@28
       name: "Build/test module on Ubuntu"
       platform: ubuntu2204
