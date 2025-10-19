@@ -4,6 +4,8 @@ bcr_test_module:
     bazel: [8.x]
   tasks:
     ubuntu2204:
+      environment:
+        PATH: $HOME/.local/bin
       shell_commands:
       - curl https://mise.run | sh
       - ~/.local/bin/mise --version
