@@ -6,8 +6,10 @@ bcr_test_module:
   tasks:
     ubuntu2204:
       shell_commands:
+      - wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb
+      - sudo dpkg -i erlang-solutions_1.0_all.deb
       - sudo apt-get update
-      - sudo apt-get install -y erlang
+      - sudo apt-get install -y esl-erlang
       name: "Build/test module on Ubuntu"
       platform: ubuntu2204
       bazel: ${{ bazel }}
@@ -17,7 +19,8 @@ bcr_test_module:
       - "..."
     macos:
       shell_commands:
-      - sudo port -N install erlang
+      - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      - brew install erlang
       name: "Run test module on Mac OSX"
       platform: macos
       bazel: ${{ bazel }}
