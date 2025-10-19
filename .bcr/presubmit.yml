@@ -1,5 +1,5 @@
 bcr_test_module:
-  module_path: "examples/testall"
+  module_path: "examples/httpserver"
   matrix:
     # No testing on windows, consider supporting! 
     bazel: [8.x]

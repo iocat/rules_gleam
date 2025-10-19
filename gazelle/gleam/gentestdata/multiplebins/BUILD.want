@@ -1,0 +1,18 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_binary")
+
+gleam_binary(
+    name = "main_one",
+    srcs = ["main_one.gleam"],
+    _gazelle_imports = [
+        "gleam/io",
+        "gleam/string",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+gleam_binary(
+    name = "main_two",
+    srcs = ["main_two.gleam"],
+    _gazelle_imports = [],
+    visibility = ["//visibility:private"],
+)

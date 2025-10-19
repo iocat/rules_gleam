@@ -41,8 +41,8 @@ type gleamModuleBundle struct {
 	name string
 	kind ruleKind
 	// Maps to fully qualified module names.
-	modules        map[string]gleamModuleInfo
-	mainModuleName string
+	modules map[string]gleamModuleInfo
+	// mainModuleName string
 
 	rel string
 	c   *config.Config
@@ -156,8 +156,15 @@ func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 		r.SetAttr("visibility", []string{"//visibility:private"})
 		// If bin has multiple sources, add a main_module to identify
 		// which module declare the main function.
-		if gmb.mainModuleName != "" && len(r.AttrStrings("srcs")) > 1 {
-			r.SetAttr("main_module", gmb.mainModuleName)
+		mainModule := ""
+		for _, m := range gmb.modules {
+			if m.hasMainFn {
+				mainModule = m.moduleName
+				break
+			}
+		}
+		if mainModule != "" && len(r.AttrStrings("srcs")) > 1 {
+			r.SetAttr("main_module", mainModule)
 		}
 	case ruleKindLib, ruleKindErlLib:
 		if isInternalModule {
@@ -231,8 +238,6 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 			}
 			gleamBundle.modules[module.moduleName] = *module
 			if module.hasMainFn {
-
-				gleamBundle.mainModuleName = module.moduleName
 				gleamBundle.kind = ruleKindBin
 			}
 		case erlExt:
@@ -272,27 +277,19 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 				bundles = append(bundles, libBundle)
 			}
 		} else { // ruleKindBin
-			var mainModuleInfo gleamModuleInfo
-			// Find the main module info
 			for modName, moduleInfo := range gleamBundle.modules {
-				if modName == gleamBundle.mainModuleName {
-					mainModuleInfo = moduleInfo
-					break
-				}
-			}
-
-			binBundle := &gleamModuleBundle{
-				kind:           ruleKindBin,
-				name:           gleamBundle.mainModuleName,
-				modules:        map[string]gleamModuleInfo{gleamBundle.mainModuleName: mainModuleInfo},
-				mainModuleName: gleamBundle.mainModuleName,
-				rel:            gleamBundle.rel,
-				c:              gleamBundle.c,
-			}
-			bundles = append(bundles, binBundle)
-
-			for modName, moduleInfo := range gleamBundle.modules {
-				if modName != gleamBundle.mainModuleName {
+				if moduleInfo.hasMainFn {
+					modules := map[string]gleamModuleInfo{}
+					modules[modName] = moduleInfo
+					binBundle := &gleamModuleBundle{
+						kind:    ruleKindBin,
+						name:    modName,
+						modules: modules,
+						rel:     gleamBundle.rel,
+						c:       gleamBundle.c,
+					}
+					bundles = append(bundles, binBundle)
+				}else  {
 					libBundle := &gleamModuleBundle{
 						kind:    ruleKindLib,
 						name:    modName,
