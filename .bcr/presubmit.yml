@@ -6,8 +6,8 @@ bcr_test_module:
   tasks:
     ubuntu2204:
       shell_commands:
-      - apt-get update
-      - apt-get install -y erlang
+      - sudo apt-get update
+      - sudo apt-get install -y erlang
       name: "Build/test module on Ubuntu"
       platform: ubuntu2204
       bazel: ${{ bazel }}
@@ -17,7 +17,7 @@ bcr_test_module:
       - "..."
     macos:
       shell_commands:
-      - port -N install erlang
+      - sudo port -N install erlang
       name: "Run test module on Mac OSX"
       platform: macos
       bazel: ${{ bazel }}
