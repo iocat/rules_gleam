@@ -11,6 +11,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/iocat/rules_gleam/gazelle/gleam/parser"
+	"github.com/kr/pretty"
 
 	"path"
 	"path/filepath"
@@ -161,7 +162,7 @@ func (gmb *gleamModuleBundle) generateRules() []*rule.Rule {
 	case ruleKindLib, ruleKindErlLib:
 		if isInternalModule {
 			// r.SetAttr("visibility", gmb.nonInternalVisibility())
-			r.SetAttr("visibility",  []string{fmt.Sprintf("//%s:__subpackages__", gmb.rel)})
+			r.SetAttr("visibility", []string{fmt.Sprintf("//%s:__subpackages__", gmb.rel)})
 		} else {
 			r.SetAttr("visibility", gmb.nonInternalVisibility())
 		}
@@ -188,6 +189,11 @@ func (gmb *gleamModuleBundle) generateImports() []any {
 
 func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResult {
 	bundles := []*gleamModuleBundle{}
+	// Do not generate for build directory at root as this is gleam add output directory.
+	if args.Rel != "." && (strings.HasPrefix(filepath.Dir(args.Rel), "build/") || //
+		filepath.Dir(args.Rel) == "build") {
+		return lang.GenerateResult{}
+	}
 	name := path.Base(args.Rel)
 	if len(name) == 0 || name == "." {
 		name = "gleam_lib"
@@ -316,7 +322,7 @@ func (g *gleamLanguage) GenerateRules(args lang.GenerateArgs) lang.GenerateResul
 	if len(rulesList) != len(importsList) {
 		panic("Rules and imports should be of the same size. Check implementation.")
 	}
-	sortFunc := func (i, j int) bool {
+	sortFunc := func(i, j int) bool {
 		r1 := rulesList[i]
 		r2 := rulesList[i]
 		return r1.Name() < r2.Name()
@@ -342,10 +348,15 @@ func getGleamModuleInfo(dir, file string, rel string) (*gleamModuleInfo, error) 
 		log.Printf("failed to parse file %s: %v", filePath, err)
 		return nil, nil
 	}
+	printTree := false
 	if parseTree != nil {
 		for _, stmt := range parseTree.(parser.SourceFile).Statements {
 			switch s := stmt.(type) {
 			case parser.Import:
+				if s.Module == "gleam/erlang/actor" {
+					fmt.Println(s, dir, file, rel)
+					printTree = true
+				}
 				imports[s.Module] = true
 			case parser.Function:
 				if s.Name == "main" && s.Public && len(s.Parameters) == 0 {
@@ -360,6 +371,9 @@ func getGleamModuleInfo(dir, file string, rel string) (*gleamModuleInfo, error) 
 				}
 			}
 		}
+	}
+	if printTree {
+		pretty.Println(parseTree)
 	}
 
 	moduleParents := filepath.SplitList(rel)

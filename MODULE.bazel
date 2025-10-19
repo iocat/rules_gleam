@@ -10,17 +10,8 @@ bazel_dep(name = "rules_erlang", version = "3.16.0")
 bazel_dep(name = "platforms", version = "1.0.0")
 bazel_dep(name = "bazel_features", version = "1.35.0")
 
-# single_version_override(
-#     module_name = "gazelle",
-#     patches = [
-#         "//:langs.go.diff",
-#     ],
-#     patch_strip = 1,
-#     version = "0.45.0"
-# )
 # Download a suitable Go SDK.
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-
 go_sdk.download(version = "1.25.1")
 use_repo(go_sdk, "go_host_compatible_sdk_label")
 
@@ -33,12 +24,14 @@ use_repo(go_deps, "com_github_bazelbuild_buildtools", "com_github_bmatcuk_double
 
 gleam = use_extension("//:extensions.bzl", "gleam")
 gleam.deps(gleam_toml = "//:gleam/gleeunit/gleam.toml")
+
 # Registers the default toolchain to be the latest
 # User of rules_gleam, can customize the default tool chains using the same extension tag:
 gleam.toolchain(version = "latest")
 
 register_toolchains("@gleam_toolchains//:all")
-use_repo(gleam, "gleam_hex_repositories_config", "hex_gleam_stdlib", "gleam_toolchains")
+
+use_repo(gleam, "gleam_compiler_aarch64_apple_darwin", "gleam_compiler_aarch64_pc_windows_msvc", "gleam_compiler_aarch64_unknown_linux_musl", "gleam_compiler_x86_64_apple_darwin", "gleam_compiler_x86_64_pc_windows_msvc", "gleam_compiler_x86_64_unknown_linux_musl", "gleam_hex_repositories_config", "gleam_toolchains", "hex_gleam_stdlib")
 
 # Internal tools
 gleam_tools = use_extension("//internal/tools:extensions.bzl", "tools")

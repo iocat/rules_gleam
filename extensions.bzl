@@ -29,7 +29,7 @@ def _compiler_extension(module_ctx):
     else:
         selected = default_toolchains[0][0].version
 
-    register_toolchains(
+    compiler_repos = register_toolchains(
         version = selected,
     )
     
@@ -57,6 +57,8 @@ def _compiler_extension(module_ctx):
     if first_module.is_root and first_module.name == "rules_gleam":
         direct_deps["gleam_hex_repositories_config"] = True
         direct_deps["gleam_toolchains"] = True
+        for compiler_repo in compiler_repos:
+            direct_deps[compiler_repo] = True
 
     return extension_metadata(
         module_ctx,

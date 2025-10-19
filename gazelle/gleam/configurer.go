@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -26,6 +27,8 @@ type GleamConfig struct {
 	// Cache of remote repositories from gleam.toml
 	// Reusing Go repo.Repo for now.
 	repos []repo.Repo
+	// Required for external repo construction.
+	gleamCompilerPath string
 }
 
 func (c *GleamConfig) clone() *GleamConfig {
@@ -34,9 +37,10 @@ func (c *GleamConfig) clone() *GleamConfig {
 	copy(repos, c.repos)
 	copy(visibility, c.gleamVisibility)
 	return &GleamConfig{
-		gleamVisibility: visibility,
-		externalRepo:    c.externalRepo,
-		repos:           repos,
+		gleamVisibility:   visibility,
+		externalRepo:      c.externalRepo,
+		repos:             repos,
+		gleamCompilerPath: c.gleamCompilerPath,
 	}
 }
 
@@ -44,6 +48,7 @@ func (g *gleamLanguage) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Co
 	pc := &GleamConfig{}
 	c.Exts[languageName] = pc
 
+	fs.StringVar(&pc.gleamCompilerPath, "gleam_compiler_path", "", "The path to the gleam compiler")
 	fs.BoolVar(&pc.externalRepo, "gleam_external_repo", //
 		false, "Whether we're setting up an external Gleam repository")
 }
@@ -53,7 +58,10 @@ func (g *gleamLanguage) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	c.Exts[languageName] = gc
 
 	if gc.externalRepo {
-		if err := maybePopulateRemoteCacheFromGleamTomlForExternalRepo(c, &gc.repos); err != nil {
+		if len(gc.gleamCompilerPath) == 0 {
+			return fmt.Errorf("gleam compiler not provided.")
+		}
+		if err := maybePopulateRemoteCacheFromGleamTomlForExternalRepo(c, gc, &gc.repos); err != nil {
 			return err
 		}
 	} else {
@@ -66,11 +74,75 @@ func (g *gleamLanguage) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 }
 
 type GleamToml struct {
-	Name         string            `toml:"name"`
-	Dependencies map[string]string `toml:"dependencies"`
+	Name            string            `toml:"name"`
+	Dependencies    map[string]string `toml:"dependencies"`
+	DevDependencies map[string]any `toml:"dev-dependencies"`
 }
 
-func maybePopulateRemoteCacheFromGleamTomlForExternalRepo(c *config.Config, repos *[]repo.Repo) error {
+type ManifestTomlPackage struct {
+	Name          string   `toml:"name"`
+	Version       string   `toml:"version"`
+	BuildTools    []string `toml:"build_tools"`
+	Requirements  []string `toml:"requirements"`
+	OtpApp        string   `toml:"otp_app"`
+	Source        string   `toml:"source"`
+	OuterChecksum string   `toml:"outer_checksum"`
+}
+
+type ManifestToml struct {
+	Packages []ManifestTomlPackage `toml:"packages"`
+}
+
+func parseGleamToml(repoRoot string) (*GleamToml, error) {
+	gleamTomlPath := filepath.Join(repoRoot, "gleam.toml")
+	if _, err := os.Stat(gleamTomlPath); err != nil {
+		return nil, nil
+	}
+
+	data, err := os.ReadFile(gleamTomlPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var gleamToml GleamToml
+	if err := toml.Unmarshal(data, &gleamToml); err != nil {
+		return nil, err
+	}
+	// clear dev dependencies. (minimize fetch)
+	gleamToml.DevDependencies = make(map[string]any)
+	// rewrite back for gleam tool to pick up.
+
+	removedDevToml, err := toml.Marshal(gleamToml)
+	if err != nil {
+		return nil, fmt.Errorf("failed to remove dev deps: %s", err)
+	}
+	err = os.WriteFile(gleamTomlPath, []byte(removedDevToml), 0644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write gleam.toml with removed deps: %s", err)
+	}
+	return &gleamToml, nil
+}
+
+func parseManifestToml(repoRoot string) (*ManifestToml, error) {
+	manifestTomlPath := filepath.Join(repoRoot, "manifest.toml")
+	if _, err := os.Stat(manifestTomlPath); err != nil {
+		return nil, nil
+	}
+
+	data, err := os.ReadFile(manifestTomlPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var manifestToml = new(ManifestToml)
+	if err := toml.Unmarshal(data, manifestToml); err != nil {
+		return nil, err
+	}
+	// rewrite back for gleam tool to pick up.
+	return manifestToml, nil
+}
+
+func maybePopulateRemoteCacheFromGleamTomlForExternalRepo(c *config.Config, gc *GleamConfig, repos *[]repo.Repo) error {
 	haveGleam := false
 	for name := range c.Exts {
 		if name == "gleam" {
@@ -82,25 +154,34 @@ func maybePopulateRemoteCacheFromGleamTomlForExternalRepo(c *config.Config, repo
 		return nil
 	}
 
-	gleamTomlPath := filepath.Join(c.RepoRoot, "gleam.toml")
-	if _, err := os.Stat(gleamTomlPath); err != nil {
-		return nil
-	}
-
-	data, err := os.ReadFile(gleamTomlPath)
+	gleamToml, err := parseGleamToml(c.RepoRoot)
 	if err != nil {
 		return err
 	}
 
-	var gleamToml GleamToml
-	if err := toml.Unmarshal(data, &gleamToml); err != nil {
-		return err
+	if gleamToml == nil || len(gleamToml.Dependencies) == 0 {
+		return nil
+	}
+	
+	// fetch repos
+	downloaded := exec.Command(gc.gleamCompilerPath, "deps", "download")
+	downloaded.Dir = c.RepoRoot
+	_, err = downloaded.Output()
+	if err != nil {
+		return fmt.Errorf("failed to download deps packages %v", err)
 	}
 
-	repoName := getRepoNameFromPath(c.RepoRoot)
-	for gleamPackage := range gleamToml.Dependencies {
+	// parse manifest.toml since it contains all of the indirect dependencies.
+	manifestToml, err := parseManifestToml(c.RepoRoot)
+	if err != nil {
+		return err
+	}
+	
+
+	for _, manifestPackage := range manifestToml.Packages {
+		gleamPackage := manifestPackage.Name
 		module := fmt.Sprintf("hex_%s", gleamPackage)
-		externalPath := strings.Replace(c.RepoRoot, repoName, module, 1)
+		externalPath := filepath.Join(c.RepoRoot, "build", "packages", gleamPackage, "src")
 		_, err := os.Stat(externalPath)
 		if err != nil {
 			return err
@@ -130,7 +211,7 @@ func maybePopulateRemoteCacheFromBzlMod(c *config.Config, repos *[]repo.Repo) er
 		configModuleName = "gleam_hex_repositories_config"
 	}
 	rf, _ := runfiles.New()
-	buildFile, err := rf.Rlocation(fmt.Sprintf("%s/BUILD", configModuleName))
+	buildFile, err := rf.Rlocation(fmt.Sprintf("%s/BUILD.bazel", configModuleName))
 	if err != nil {
 		return err
 	}
@@ -138,7 +219,7 @@ func maybePopulateRemoteCacheFromBzlMod(c *config.Config, repos *[]repo.Repo) er
 	if err != nil {
 		return err
 	}
-	buildFileParsed, err := build.ParseBuild(fmt.Sprintf("%s:BUILD", configModuleName), content)
+	buildFileParsed, err := build.ParseBuild(fmt.Sprintf("%s:BUILD.bazel", configModuleName), content)
 	if err != nil {
 		return err
 	}
@@ -199,7 +280,7 @@ func walkDirForRepos(c *config.Config, dir string, bazelModule string) (repos []
 }
 
 func parallelAppendRepos(c *config.Config, rf *runfiles.Runfiles, mu *sync.Mutex, module string, moduleDirName string, repos *[]repo.Repo) {
-	moduleBuild, err := rf.Rlocation(fmt.Sprintf("%s/BUILD", moduleDirName))
+	moduleBuild, err := rf.Rlocation(fmt.Sprintf("%s/BUILD.bazel", moduleDirName))
 	if err != nil {
 		log.Printf("Could not find module directory for %s: %v", module, err)
 		return

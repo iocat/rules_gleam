@@ -93,11 +93,11 @@ type UnqualifiedImport struct {
 // ## Grammar Entrypoint
 // -----------------------------------------------------------------------------
 
-SourceFile <- _ first:(Import / Function / IgnoredContent)? rest:(_ (Import / Function / IgnoredContent))* _ EOF {
-	if first == nil {
-		return SourceFile{Statements: []Node{}}, nil
+SourceFile <- _ first:(Import / IgnoredType / Function / IgnoredContent)? rest:(_ (Import / IgnoredType / Function / IgnoredContent))* _ EOF {
+    validStatements := []Node{}
+    if first != nil {
+		validStatements = append(validStatements, first)
 	}
-    validStatements := []Node{first}
     if rest != nil {
         for _, s := range rest.([]any) {
             if s != nil {
@@ -153,7 +153,7 @@ FunctionParameters <- "(" _ first:FunctionParameter? rest:(_ "," _ FunctionParam
     return params, nil
 }
 
-LambdaFunction <- "fn" _ "(" _ first:LambdaFunctionParameter? rest:(_ "," _ LambdaFunctionParameter)*  _ ")" returnGroup:(_ "->" _ LambdaFunctionParameter)? {
+LambdaFunction <- "fn" _ "(" _ first:LambdaFunctionParameter? rest:(_ "," _ LambdaFunctionParameter)*  _ ","? _ ")" returnGroup:(_ "->" _ LambdaFunctionParameter)? {
     return nil, nil
 }
 LambdaFunctionParameter <- t:(LambdaFunction / Type / TupleType) { return t, nil }
@@ -172,6 +172,9 @@ TupleType <- "#(" _ first:(TypeAnnotationContent) rest:(_ "," _ TypeAnnotationCo
 Type <- mod:(Name ".")? name:(Name / UpName) (_ gp:GenericParams)? {
     return name.(string), nil
 }
+IgnoredType <- pub:("pub" __)? opaque:("opaque" __)? "type" __ (Type) (_ IgnoredBlock)? {
+    return nil, nil
+}
 GenericParams <- "(" _ first:(TypeAnnotationContent) rest:(_ "," _ TypeAnnotationContent)* _ ","? ")" { return nil, nil }
 GenericParam <- mod:(Name ".")? param:(Name / UpName) (_ GenericParams _)? { return nil, nil }
 LabeledNameParam <- label:Label _ name:Identifier {
@@ -183,8 +186,25 @@ Identifier <- Name { return Identifier{Name: string(c.text)}, nil }
 Discard <- DiscardName { return Discard{Name: string(c.text)}, nil }
 Label <- Name { return string(c.text), nil }
 
-IgnoredContent <- (!(TargetAttribute __ "fn" / TargetAttribute __ "import" / TargetAttribute __ "pub" __ "fn" / "import" / "@external(" / "fn" __ / "pub" __ "fn" __  ) .)+ { return nil, nil }
-IgnoredBlock <- "{" (IgnoredBlock / !"}" .)* "}" { return nil, nil }
+IgnoredContent <- expr:(!(
+    TargetAttribute _ "fn" _ /
+    TargetAttribute _ "import" /
+    TargetAttribute _ "pub" _ "fn" _ /
+    "import" _ /
+    ExternalAttribute _ /
+    # To distinguish from anonymous function
+    "fn" _ Name /
+    "pub" _ "fn" _ /
+    "type" _ /
+    "pub" _ "type" _ /
+    "pub" _ "opaque" _ "type" _ /
+    "//" _
+) .)+ {
+    return nil, nil
+}
+IgnoredBlock <- "{" expr:(IgnoredBlock / !"}" .)* "}" {
+    return nil, nil
+}
 
 // -----------------------------------------------------------------------------
 // ## Whitespace & Comments

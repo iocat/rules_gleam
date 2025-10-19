@@ -1,15 +1,27 @@
-# We recommend included a bcr test workspace that exercises your ruleset with bzlmod.
-# For an example, see https://github.com/aspect-build/bazel-lib/tree/main/e2e/bzlmod.
 bcr_test_module:
   module_path: "examples/testall"
   matrix:
     # No testing on windows, consider supporting! 
-    platform: ["debian11", "macos", "ubuntu2204"]
     bazel: [8.x]
   tasks:
-    run_tests:
-      name: "Run test module"
-      platform: ${{ platform }}
+    ubuntu2204:
+      shell_commands:
+      - apt-get update
+      - apt-get install erlang
+      name: "Build/test module on Ubuntu"
+      platform: ubuntu2204
       bazel: ${{ bazel }}
+      build_targets:
+      - "..."
       test_targets:
-        - "//..."
+      - "..."
+    macos:
+      shell_commands:
+      - port install erlang
+      name: "Run test module on Mac OSX"
+      platform: macos
+      bazel: ${{ bazel }}
+      build_targets:
+      - "..."
+      test_targets:
+      - "..."

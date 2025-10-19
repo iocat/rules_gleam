@@ -178,7 +178,8 @@ pub fn main(test: fn(Int) -> Int) {
 pub fn subfield(
   field_path: List(name),
   field_decoder: Decoder(t),
-  next: fn(t) -> Decoder(final),
+  next: fn(t) ->
+  	Decoder(final),
 ) -> Decoder(final) {
 	Decoder(function: fn(data) {
     let #(out, errors1) =
@@ -204,6 +205,17 @@ pub fn high_order_function(effect: fn(fn(msg) -> Nil) -> Nil) -> Effect(msg) {
   Effect(..empty, synchronous: [task])
 }
 
+pub fn attach_many(
+  id: String,
+  path: List(List(Event)),
+  handler: fn(
+    List(config),
+  ) ->
+    Nil,
+) -> Nil {
+  do_attach_many(id, path, handler, Nil)
+}
+
 `,
 			ast: SourceFile{
 				Statements: []Node{
@@ -211,6 +223,126 @@ pub fn high_order_function(effect: fn(fn(msg) -> Nil) -> Nil) -> Effect(msg) {
 					makeFunctionStmt(true, "subfield", makeParameters("field_path", "List", "field_decoder", "Decoder", "next", nil), nil, string("Decoder")),
 					makeFunctionStmt(false, "fold_dict", makeParameters("acc", nil, "key", "Dynamic", "value", nil, "key_decoder", nil, "value_decoder", nil), nil, nil),
 					makeFunctionStmt(true, "high_order_function", makeParameters("effect", nil), nil, string("Effect")),
+					makeFunctionStmt(true, "attach_many", makeParameters("id", "String", "path", "List", "handler", nil), nil, string("Nil")),
+				},
+			},
+		},
+		{
+			desc: "houdini",
+			input: `@target(javascript)
+import houdini/internal/escape_js as escape
+
+@target(erlang)
+import houdini/internal/escape_erl as escape
+
+/// Escapes a string to be safely used inside an HTML document by escaping
+/// the following characters:
+///
+///` +
+				"///   - `<` becomes `&lt;`" +
+				"///   - `>` becomes `&gt;`" +
+				"///   - `&` becomes `&amp;`" +
+				"///   - `\"` becomes `&quot;`" +
+				"///   - `'` becomes `&#39;`." +
+				`///
+/// ## Examples
+///
+/// assert escape("wibble & wobble") == "wibble &amp; wobble"
+/// assert escape("wibble > wobble") == "wibble &gt; wobble"
+`, ast: SourceFile{
+				Statements: []Node{
+					makeImportStmt("houdini/internal/escape_js", "alias:escape", "target:javascript"),
+					makeImportStmt("houdini/internal/escape_erl", "alias:escape", "target:erlang"),
+				},
+			},
+		},
+		{
+			desc: "houdini",
+			input: `
+/// An alernative ok type used within Erlang/OTP
+pub type Result2(data1, data2, error) {
+  Ok(data1, data2)
+  Error(error)
+}
+
+@target(erlang)
+type Token =
+  List(Nil)
+`, ast: SourceFile{
+				Statements: []Node{},
+			},
+		},
+
+		{
+			desc: "ignore comments",
+			input: `
+import gleam/dynamic.{type Dynamic}
+
+pub opaque type Supervisor {
+  Supervisor(pid: Pid)
+}
+
+
+/// A builder for configuring and starting a supervisor. See each of the
+/// functions that take this type for details of the configuration possible.
+///
+/// # Example
+///
+` + "/// ```gleam" + `
+/// import gleam/erlang/actor
+/// import gleam/otp/static_supervisor.{type Supervisor} as supervisor
+/// import app/database_pool
+/// import app/http_server
+/// 
+` + "/// ```\n" +
+				`///
+import gleam/int
+`,
+			ast: SourceFile{
+				Statements: []Node{
+					makeImportStmt("gleam/dynamic", "type:Dynamic"),
+					makeImportStmt("gleam/int"),
+				},
+			},
+		},
+		{
+			desc: "ignore types",
+			input: `
+
+pub type LogLevel {
+  Emergency
+  Alert
+}
+
+type DoNotLeak
+
+@external(erlang, "logging_ffi", "configure")
+pub fn configure() -> Nil
+
+@external(erlang, "logger", "log")
+fn erlang_log(level: LogLevel, message: String) -> DoNotLeak
+
+@external(erlang, "logger", "set_primary_config")
+fn set_primary_config_level(key: Key, level: LogLevel) -> DoNotLeak
+
+type Key {
+  Level
+}
+
+`,
+			ast: SourceFile{
+				Statements: []Node{
+					makeFunctionStmt(true, "configure",
+						makeParameters(), []ExternalAttribute{
+							{TargetLang: "erlang", Module: "logging_ffi", Function: "configure"},
+						}, string("Nil")),
+					makeFunctionStmt(false, "erlang_log",
+						makeParameters("level", "LogLevel", "message", "String"), []ExternalAttribute{
+							{TargetLang: "erlang", Module: "logger", Function: "log"},
+						}, string("DoNotLeak")),
+					makeFunctionStmt(false, "set_primary_config_level", makeParameters("key", "Key", "level", "LogLevel"), []ExternalAttribute{
+						{TargetLang: "erlang", Module: "logger", Function: "set_primary_config"},
+					}, string("DoNotLeak")),
 				},
 			},
 		},
@@ -353,51 +485,6 @@ pub fn from_list(list: List(#(k, v))) -> Dict(k, v) {
 					makeParameters("first", "Decoder", "or alternatives", "List"), nil, string("Decoder")),
 				makeFunctionStmt(true, "from_list", makeParameters("list", "List"), nil, string("Dict")),
 			}},
-		},
-		{
-			desc: "houdini",
-			input: `@target(javascript)
-import houdini/internal/escape_js as escape
-
-@target(erlang)
-import houdini/internal/escape_erl as escape
-
-/// Escapes a string to be safely used inside an HTML document by escaping
-/// the following characters:
-///
-///` +
-				"///   - `<` becomes `&lt;`" +
-				"///   - `>` becomes `&gt;`" +
-				"///   - `&` becomes `&amp;`" +
-				"///   - `\"` becomes `&quot;`" +
-				"///   - `'` becomes `&#39;`." +
-				`///
-/// ## Examples
-///
-/// assert escape("wibble & wobble") == "wibble &amp; wobble"
-/// assert escape("wibble > wobble") == "wibble &gt; wobble"
-`, ast: SourceFile{
-				Statements: []Node{
-					makeImportStmt("houdini/internal/escape_js", "alias:escape", "target:javascript"),
-					makeImportStmt("houdini/internal/escape_erl", "alias:escape", "target:erlang"),
-				},
-			},
-		},
-		{
-			desc: "houdini",
-			input: `
-/// An alernative ok type used within Erlang/OTP
-pub type Result2(data1, data2, error) {
-  Ok(data1, data2)
-  Error(error)
-}
-
-@target(erlang)
-type Token =
-  List(Nil)
-`, ast: SourceFile{
-				Statements: []Node{},
-			},
 		},
 	}
 

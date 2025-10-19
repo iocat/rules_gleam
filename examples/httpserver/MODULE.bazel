@@ -1,0 +1,16 @@
+module(
+    name = "httpserver",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "rules_gleam", version = "0.0.0")
+local_path_override(
+    module_name = "rules_gleam",
+    path = "../..",
+)
+
+bazel_dep(name = "gazelle", version = "0.45.0")
+
+gleam = use_extension("@rules_gleam//:extensions.bzl", "gleam")
+gleam.deps(gleam_toml = "//:gleam.toml")
+use_repo(gleam, "hex_exception", "hex_gleam_crypto", "hex_gleam_erlang", "hex_gleam_http", "hex_gleam_otp", "hex_gleam_stdlib", "hex_gleam_yielder", "hex_glisten", "hex_gramps", "hex_hpack_erl", "hex_logging", "hex_mist", "hex_telemetry")

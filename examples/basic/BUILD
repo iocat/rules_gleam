@@ -16,7 +16,7 @@ gleam_binary(
     visibility = ["//visibility:private"],
     deps = [
         ":example_ffi_ffi",
-        "@basic//demo",
+        "//demo",
         "@hex_gleam_json//gleam:json",
         "@hex_gleam_stdlib//gleam:int",
         "@hex_gleam_stdlib//gleam:io",
