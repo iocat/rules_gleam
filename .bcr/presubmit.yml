@@ -7,7 +7,9 @@ bcr_test_module:
       shell_commands:
       - curl https://mise.run | sh
       - ~/.local/bin/mise --version
-      - ~/.local/bin/mise use -g erlang@28
+      - echo 'eval "$(~/.local/bin/mise activate --shims bash)"' >> ~/.bashrc
+      - . ~/.bashrc
+      - mise use -g erlang@28
       name: "Build/test module on Ubuntu"
       platform: ubuntu2204
       bazel: ${{ bazel }}
@@ -15,18 +17,17 @@ bcr_test_module:
       - "..."
       test_targets:
       - "..."
-    # BCR buildkite for macos can't use sudo, so we can't install erlang. As
-    # of right now, rules_gleam does not support hermetic build and require
-    # erlang to be installed. We're skipping for now.
-    #
-    # macos:
-    #   shell_commands:
-    #   - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    #   - brew install erlang
-    #   name: "Run test module on Mac OSX"
-    #   platform: macos
-    #   bazel: ${{ bazel }}
-    #   build_targets:
-    #   - "..."
-    #   test_targets:
-    #   - "..."
+    macos:
+      shell_commands:
+      - curl https://mise.run | sh
+      - ~/.local/bin/mise --version
+      - echo 'eval "$(~/.local/bin/mise activate --shims bash)"' >> ~/.bashrc
+      - . ~/.bashrc
+      - mise use -g erlang@28
+      name: "Run test module on Mac OSX"
+      platform: macos
+      bazel: ${{ bazel }}
+      build_targets:
+      - "..."
+      test_targets:
+      - "..."
