@@ -17,8 +17,10 @@ def _gleam_compiler_path(repository_ctx):
         ("mac os x", "x86_64"): "gleam_compiler_x86_64_apple_darwin",
         ("windows", "aarch64"): "gleam_compiler_aarch64_pc_windows_msvc",
         ("windows", "x86_64"): "gleam_compiler_x86_64_pc_windows_msvc",
+        ("windows", "amd64"): "gleam_compiler_x86_64_pc_windows_msvc",
         ("linux", "aarch64"): "gleam_compiler_aarch64_unknown_linux_musl",
         ("linux", "x86_64"): "gleam_compiler_x86_64_unknown_linux_musl",
+        ("linux", "amd64"): "gleam_compiler_x86_64_unknown_linux_musl",
     }
 
     os_name = repository_ctx.os.name
