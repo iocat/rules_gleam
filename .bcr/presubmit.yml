@@ -4,9 +4,6 @@ bcr_test_module:
     bazel: [8.x]
   tasks:
     ubuntu2204:
-      incompatible_flags:
-        # We are having non-hermetic builds
-        "--incompatible_strict_action_env=": []
       environment:
         PATH: $HOME/.local/share/mise/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       shell_commands:
@@ -22,17 +19,7 @@ bcr_test_module:
       - "..."
       test_targets:
       - "..."
-#     macos:
-#       shell_commands:
-#       - curl https://mise.run | sh
-#       - ~/.local/bin/mise --version
-#       - echo 'eval "$(~/.local/bin/mise activate --shims bash)"' >> ~/.bashrc
-#       - . ~/.bashrc
-#       - mise use -g erlang@28
-#       name: "Run test module on Mac OSX"
-#       platform: macos
-#       bazel: ${{ bazel }}
-#       build_targets:
-#       - "..."
-#       test_targets:
-#       - "..."
+
+incompatible_flags:
+  # We are having non-hermetic builds
+  "--incompatible_strict_action_env=": []
