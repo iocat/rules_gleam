@@ -12,6 +12,7 @@ go_test(
     srcs = [
         "diff_test.go",
         "fix_test.go",
+        "integration_gazelle_tool_test.go",
         "integration_test.go",
         "profiler_test.go",
     ],

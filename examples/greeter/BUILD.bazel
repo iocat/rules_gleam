@@ -1,0 +1,38 @@
+load("@rules_gleam//gleam:defs.bzl", "gleam_library", "gleam_binary", "gleam_test")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+gazelle(
+    name = "gazelle",
+    gazelle = "@rules_gleam//gazelle",
+)
+
+gleam_library(
+    name = "greeter_lib",
+    srcs = ["greeter.gleam"],
+    deps = [
+        "@hex_gleam_stdlib//:gleam_stdlib",
+    ],
+)
+
+gleam_binary(
+    name = "greeter",
+    srcs = ["greeter.gleam"],
+    deps = [
+        ":greeter_lib",
+        "@hex_gleam_json//gleam",
+        "@hex_gleam_stdlib//gleam",
+    ],
+)
+
+# Tests
+gleam_test(
+    name = "greeter_test",
+    srcs = ["test/greeter_test.gleam"],
+    deps = [
+        ":greeter_lib",
+        "@hex_gleeunit//:gleeunit",
+    ],
+)
