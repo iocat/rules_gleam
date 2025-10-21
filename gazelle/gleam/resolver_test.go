@@ -216,7 +216,8 @@ var testCases = []resolveTestCase{
 						visibility = ["//visibility:private"],
 						deps = [
 							"//foo/bar",
-							"@hex_gleam_stdlib//gleam",
+							"@hex_gleam_stdlib//gleam:int",
+							"@hex_gleam_stdlib//gleam:io",
 							"@hex_gleeunit//gleeunit",
 						],
 					)
@@ -306,8 +307,8 @@ var testCases = []resolveTestCase{
 							":test_internal",
 							"//test/internal",
 							"//too/many/level/deep",
-							"@hex_fl//:gleam_lib",
-							"@hex_gleam_stdlib//gleam",
+							"@hex_fl//:fl",
+							"@hex_gleam_stdlib//gleam:io",
 						],
 					)
 			`,
@@ -406,50 +407,4 @@ func convertImportsAttr(r *rule.Rule) []string {
 func testRemoteCache(knownRepos []repo.Repo) *repo.RemoteCache {
 	rc, _ := repo.NewRemoteCache(knownRepos)
 	return rc
-	// rc.RepoRootForImportPath = stubRepoRootForImportPath
-	//
-	//	rc.HeadCmd = func(_, _ string) (string, error) {
-	//		return "", fmt.Errorf("HeadCmd not supported in test")
-	//	}
-	//
-	// rc.ModInfo = stubModInfo
-	// return rc
 }
-
-// func stubRepoRootForImportPath(importPath string, verbose bool) (*vcs.RepoRoot, error) {
-// 	if pathtools.HasPrefix(importPath, "example.com/repo.git") {
-// 		return &vcs.RepoRoot{
-// 			VCS:  vcs.ByCmd("git"),
-// 			Repo: "https://example.com/repo.git",
-// 			Root: "example.com/repo.git",
-// 		}, nil
-// 	}
-
-// 	if pathtools.HasPrefix(importPath, "example.com/repo") {
-// 		return &vcs.RepoRoot{
-// 			VCS:  vcs.ByCmd("git"),
-// 			Repo: "https://example.com/repo.git",
-// 			Root: "example.com/repo",
-// 		}, nil
-// 	}
-
-// 	if pathtools.HasPrefix(importPath, "example.com") {
-// 		return &vcs.RepoRoot{
-// 			VCS:  vcs.ByCmd("git"),
-// 			Repo: "https://example.com",
-// 			Root: "example.com",
-// 		}, nil
-// 	}
-
-// 	return nil, fmt.Errorf("could not resolve import path: %q", importPath)
-// }
-
-// func stubModInfo(importPath string) (string, error) {
-// 	if pathtools.HasPrefix(importPath, "example.com/repo/v2") {
-// 		return "example.com/repo/v2", nil
-// 	}
-// 	if pathtools.HasPrefix(importPath, "example.com/repo") {
-// 		return "example.com/repo", nil
-// 	}
-// 	return "", fmt.Errorf("could not find module for import path: %q", importPath)
-// }

@@ -1,12 +1,5 @@
 load("@rules_gleam//gleam:defs.bzl", "gleam_library", "gleam_test")
 
-gleam_library(
-    name = "deeper",
-    srcs = ["okay.gleam"],
-    _gazelle_imports = [],
-    visibility = ["//visibility:public"],
-)
-
 gleam_test(
     name = "deeper_test",
     srcs = ["okay_test.gleam"],
@@ -14,4 +7,11 @@ gleam_test(
         "withunittest/example/deeper/internal/internal",
         "withunittest/example/deeper/okay",
     ],
+)
+
+gleam_library(
+    name = "okay",
+    srcs = ["okay.gleam"],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
 )

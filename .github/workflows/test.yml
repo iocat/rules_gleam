@@ -28,3 +28,6 @@ jobs:
           cd examples/basic
           bazel test //...
           cd ../..
+          cd examples/httpserver
+          bazel build //...
+          cd ../..

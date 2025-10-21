@@ -15,15 +15,17 @@ gleam_binary(
     srcs = ["example.gleam"],
     visibility = ["//visibility:private"],
     deps = [
-        ":example_ffi",
-        "@basic//demo",
-        "@hex_gleam_json//gleam",
-        "@hex_gleam_stdlib//gleam",
+        ":example_ffi_ffi",
+        "//demo",
+        "@hex_gleam_json//gleam:json",
+        "@hex_gleam_stdlib//gleam:int",
+        "@hex_gleam_stdlib//gleam:io",
+        "@hex_gleam_stdlib//gleam:option",
     ],
 )
 
 gleam_erl_library(
-    name = "example_ffi",
+    name = "example_ffi_ffi",
     srcs = ["example_ffi.erl"],
     visibility = ["//visibility:public"],
 )
@@ -33,6 +35,6 @@ gleam_test(
     srcs = ["example_test.gleam"],
     deps = [
         ":example",
-        "@hex_gleam_stdlib//gleam",
+        "@hex_gleam_stdlib//gleam:option",
     ],
 )

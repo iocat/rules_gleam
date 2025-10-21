@@ -44,10 +44,11 @@ type Graph struct {
 }
 
 type GleamRepo struct {
-	ModuleName string `json:"module_name"`
-	Version    string `json:"version"`
-	Checksum   string `json:"checksum"`
-	OtpApp     string `json:"otp_app"`
+	ModuleName string   `json:"module_name"`
+	Version    string   `json:"version"`
+	Checksum   string   `json:"checksum"`
+	OtpApp     string   `json:"otp_app"`
+	Deps       []string `json:"deps"`
 }
 
 type GleamRepoes struct {
@@ -89,6 +90,7 @@ func run(manifestFile string, w io.Writer) error {
 			Version:    pkg.Version,
 			Checksum:   pkg.OuterChecksum,
 			OtpApp:     pkg.OtpApp,
+			Deps:       pkg.Requirements,
 		})
 	}
 

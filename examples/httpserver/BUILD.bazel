@@ -1,0 +1,49 @@
+load("@gazelle//:def.bzl", "gazelle")
+load("@rules_gleam//gleam:defs.bzl", "gleam_binary")
+
+exports_files(["gleam.toml"])
+
+gazelle(
+    name = "gazelle",
+    gazelle = "@rules_gleam//gazelle",
+)
+
+gleam_binary(
+    name = "eventz",
+    srcs = ["eventz.gleam"],
+    visibility = ["//visibility:private"],
+    deps = [
+        "@hex_gleam_erlang//gleam/erlang:process",
+        "@hex_gleam_http//gleam/http:request",
+        "@hex_gleam_http//gleam/http:response",
+        "@hex_gleam_otp//gleam/otp:actor",
+        "@hex_gleam_stdlib//gleam:bytes_tree",
+        "@hex_gleam_stdlib//gleam:int",
+        "@hex_gleam_stdlib//gleam:string",
+        "@hex_gleam_stdlib//gleam:string_tree",
+        "@hex_logging//:logging",
+        "@hex_mist//:mist",
+        "@hex_repeatedly//:repeatedly",
+    ],
+)
+
+gleam_binary(
+    name = "main",
+    srcs = ["main.gleam"],
+    visibility = ["//visibility:private"],
+    deps = [
+        "@hex_gleam_erlang//gleam/erlang:process",
+        "@hex_gleam_http//gleam/http:request",
+        "@hex_gleam_http//gleam/http:response",
+        "@hex_gleam_stdlib//gleam:bit_array",
+        "@hex_gleam_stdlib//gleam:bytes_tree",
+        "@hex_gleam_stdlib//gleam:int",
+        "@hex_gleam_stdlib//gleam:io",
+        "@hex_gleam_stdlib//gleam:option",
+        "@hex_gleam_stdlib//gleam:result",
+        "@hex_gleam_stdlib//gleam:string",
+        "@hex_gleam_yielder//gleam:yielder",
+        "@hex_logging//:logging",
+        "@hex_mist//:mist",
+    ],
+)

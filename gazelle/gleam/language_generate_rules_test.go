@@ -3,6 +3,7 @@ package gleam
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -63,6 +64,9 @@ func TestGenerateRules(t *testing.T) {
 				return
 			}
 			f := rule.EmptyFile("test", "")
+			sort.Slice(gen, func(i,j int) bool {
+				return gen[i].Name() < gen[j].Name()
+			})
 			for _, r := range gen {
 				r.Insert(f)
 			}

@@ -76,6 +76,7 @@ toolchains_repositories = repository_rule(
 
 def register_toolchains(version = "v1.12.0"):
     prefix = "gleam_compiler_"
+    compiler_repos = []
     for platform in PLATFORMS.keys():
         gleam_toolchain_repository(
             # This name is referenced by toolchains_repositories, so careful.
@@ -83,7 +84,9 @@ def register_toolchains(version = "v1.12.0"):
             platform = platform,
             version = version,
         )
+        compiler_repos.append(prefix + platform.replace("-", "_"))
     toolchains_repositories(
         name = "gleam_toolchains",
         toolchain_repo_prefix = prefix,
     )
+    return compiler_repos

@@ -1,7 +1,21 @@
 load("@rules_gleam//gleam:defs.bzl", "gleam_binary", "gleam_erl_library", "gleam_library", "gleam_test")
 
+gleam_erl_library(
+    name = "hello_ffi_ffi",
+    srcs = ["hello_ffi.erl"],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
+)
+
+gleam_library(
+    name = "internal",
+    srcs = ["internal.gleam"],
+    _gazelle_imports = ["erl:hello_ffi"],
+    visibility = ["//mixedbinerlinternaltest:__subpackages__"],
+)
+
 gleam_binary(
-    name = "mixedbinerlinternaltest",
+    name = "main",
     srcs = ["main.gleam"],
     _gazelle_imports = [
         "erl:test_ffi",
@@ -10,25 +24,15 @@ gleam_binary(
     visibility = ["//visibility:private"],
 )
 
-gleam_library(
-    name = "mixedbinerlinternaltest_internal",
-    srcs = ["internal.gleam"],
-    _gazelle_imports = ["erl:hello_ffi"],
-    visibility = ["//mixedbinerlinternaltest:__subpackages__"],
-)
-
-gleam_erl_library(
-    name = "mixedbinerlinternaltest_ffi",
-    srcs = [
-        "hello_ffi.erl",
-        "test_ffi.erl",
-    ],
-    _gazelle_imports = [],
-    visibility = ["//visibility:public"],
-)
-
 gleam_test(
     name = "mixedbinerlinternaltest_test",
     srcs = ["main_test.gleam"],
     _gazelle_imports = ["main"],
+)
+
+gleam_erl_library(
+    name = "test_ffi_ffi",
+    srcs = ["test_ffi.erl"],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
 )
