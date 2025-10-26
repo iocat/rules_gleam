@@ -21,6 +21,9 @@ jobs:
       - name: test examples
         run: |
           cd examples/basic
+          bazel build //...
+          tree bazel-out/k8-fastbuild/bin/example.sh.runfiles
+          cat bazel-out/k8-fastbuild/bin/example.sh.runfiles/_main/example.sh
           bazel test  --test_output=streamed //...
           cd ../..
           cd examples/httpserver
