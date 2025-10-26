@@ -1,6 +1,6 @@
 GleamToolsInfo = provider(
     doc = "Information about Gleam tools needed to complete compilation, specifically erl/js/gleam tools",
-    fields = ["compiler"],
+    fields = ["compiler", "js_prelude"],
 )
 
 GleamErlangToolsInfo = provider(
@@ -13,6 +13,7 @@ def _gleam_toolchain_impl(ctx):
         gleamtools = GleamToolsInfo(
             # erl_command = ctx.attr.erl_command,
             compiler = ctx.file.compiler,
+            js_preluade = ctx.file.js_prelude,
         ),
     )
 
@@ -26,6 +27,11 @@ gleam_toolchain = rule(
             doc = "The gleam compiler tool to compile gleam with.",
             allow_single_file = True,
         ),
+        "js_prelude": attr.label(
+            allow_single_file = [".mjs"],
+            mandatory = True,
+            doc = "The js prelude provided by gleam compiler.",
+        )
     },
     doc = "Defines the gleam tools to compile and execute Gleam.",
     provides = [platform_common.ToolchainInfo],
