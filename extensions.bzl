@@ -3,7 +3,7 @@
 """
 
 load("//gleam_hex:repositories.bzl", "gleam_hex_repositories")
-load("//gleam_tools:coded_versions.bzl", "VERSIONS")
+load("//gleam_tools:coded_versions.bzl", "VERSIONS", "ERL_VERSIONS", "get_key")
 load("//gleam_tools:repositories.bzl", "register_toolchains")
 load("//internal:common.bzl", "extension_metadata")
 
@@ -12,25 +12,37 @@ def _compiler_extension(module_ctx):
     direct_dev_deps = {}
 
     non_default_registrations = {}
+    non_default_erl_registrations = {}
     for mod in module_ctx.modules:
         if mod.name == "rules_gleam":
             continue
         for toolchain in mod.tags.toolchain:
             non_default_registrations[toolchain.version] = True
+        for erlang in mod.tags.erlang:
+            non_default_erl_registrations[erlang.version] = True
 
     default_toolchains = [mod.tags.toolchain for mod in module_ctx.modules if mod.name == "rules_gleam"]
+    default_erlang_toolchains = [mod.tags.erlang for mod in module_ctx.modules if mod.name == "rules_gleam"]
 
     selected = None
     if len(non_default_registrations.keys()) >= 1:
-        selected = sorted(non_default_registrations.keys(), reverse = True)[0]
+        selected = sorted(non_default_registrations.keys(), key = get_key, reverse = True)[0]
         # buildifier: disable=print
         # print("NOTE: gleam toolchain has multiple redundancy, for versions {}, selected {}".format(", ".join(non_default_registrations.keys()), selected))
         direct_deps["gleam_toolchains"] = True
     else:
         selected = default_toolchains[0][0].version
 
+    selected_erl_version = None
+    if len(non_default_erl_registrations.keys()) >= 1:
+        selected_erl_version = sorted(non_default_erl_registrations.keys(), key = get_key, reverse = True)[0]
+        direct_deps["gleam_erlang_toolchains"] = True
+    else:
+        selected_erl_version = default_erlang_toolchains[0][0].version
+
     compiler_repos = register_toolchains(
         version = selected,
+        erl_version = selected_erl_version,
     )
     
     gleam_toml = None
@@ -57,6 +69,7 @@ def _compiler_extension(module_ctx):
     if first_module.is_root and first_module.name == "rules_gleam":
         direct_deps["gleam_hex_repositories_config"] = True
         direct_deps["gleam_toolchains"] = True
+        direct_deps["gleam_erlang_toolchains"] = True
         for compiler_repo in compiler_repos:
             direct_deps[compiler_repo] = True
 
@@ -84,5 +97,10 @@ gleam = module_extension(
                 ),
             },
         ),
+        "erlang": tag_class(
+            attrs = {
+                "version": attr.string(doc = "Versions of the erl compiler", mandatory = True, values = ERL_VERSIONS.keys() + ["latest"]),
+            }
+        )
     },
 )

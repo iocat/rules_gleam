@@ -1,6 +1,18 @@
 """Gleam toolchain versions and download information."""
 
+# From https://github.com/gleam-lang/gleam/releases
 VERSIONS = {
+    "v1.13.0": {
+        "download_url_template": "https://github.com/gleam-lang/gleam/releases/download/{version}/gleam-{version}-{platform}.tar.gz",
+        "platforms": {
+            "x86_64-apple-darwin": "sha256:858ec1297a3f5770324fb49ed0461b0c15c29bd3fe6e636e390f2e249d86a24a",
+            "aarch64-apple-darwin": "sha256:2398d1a130b1bb406bdb4a5c2cea2dc9867c677cf48b3d6c45eb200a653dbb36",
+            "aarch64-unknown-linux-musl": "sha256:7f45fd9b9cce8106851fb1c476a58193e5cca456cf06efd784b39680f839da1e",
+            "x86_64-unknown-linux-musl": "sha256:8b372488e5ccaa54d8acc2feb9852c9e7916e480566049edd565caa1d8c74eec",
+            "aarch64-pc-windows-msvc": "sha256:55956ac4358dd14874089f9726fc133d7765a53f73921e40fc64319655a0eb63",
+            "x86_64-pc-windows-msvc": "sha256:a59358ebba1abd10d50593a1dff88c0c4c16dc97566d097dc724788458794128",
+        },
+    },
     "v1.13.0-rc1": {
         "download_url_template": "https://github.com/gleam-lang/gleam/releases/download/{version}/gleam-{version}-{platform}.tar.gz",
         "platforms": {
@@ -36,6 +48,37 @@ VERSIONS = {
     },
 }
 
+# From https://github.com/cocoa-xu/otp-build/releases
+ERL_VERSIONS = {
+    "v27.3.3": {
+        "download_url_template": "https://github.com/cocoa-xu/otp-build/releases/download/{version}/otp-{platform}.tar.gz",
+        "platforms": {
+            "x86_64-apple-darwin": "sha256:68ad3b38d8d414d12a50e3f370017a212cbf5b229826e71b354ddfb36220a27d",
+            "arm64-apple-darwin": "sha256:ff5befc0fa7d3c5fb71ec76cb05fc80041fc816064fa6594fb35a54de7e81c62",
+            "aarch64-linux-gnu": "sha256:28cfb4e07825b400a2b2674be02454e3def89d922ffa476b54bba08e8918bb37",
+            "x86_64-linux-gnu": "sha256:fb05e9f406fc5b4f84ecc0ab79d58a5b5be788e600b36f7c1031f83f40de8a19",
+        },
+    },
+    "v26.2.5.3": {
+        "download_url_template": "https://github.com/cocoa-xu/otp-build/releases/download/{version}/otp-{platform}.tar.gz",
+        "platforms": {
+            "x86_64-apple-darwin": "sha256:bf222a65543f655ebc86a8cdcf26020c7f5f82969ecf38a79e65ee925ff9307d",
+            "arm64-apple-darwin": "sha256:3b2a92eba72dcd5cb78e483cb322a030a16ccb3cff8e95a454341e4c6796c853",
+            "aarch64-linux-gnu": "sha256:79561eac9867928c585bb425ee2ca43cc7677d3dbc5d99fc6c100f5e9ba7ecf1",
+            "x86_64-linux-gnu": "sha256:8da912108c8f63a9d8e0112e26419c947943ca01a5c60967564b30ff13f86fe7",
+        },
+    },
+    "v25.3.2.14": {
+        "download_url_template": "https://github.com/cocoa-xu/otp-build/releases/download/{version}/otp-{platform}.tar.gz",
+        "platforms": {
+            "x86_64-apple-darwin": "sha256:d77dd7869f67e517c0db45513f33c1fe641b9561af70366a5c82785b8dab51c0",
+            "arm64-apple-darwin": "sha256:d8888102c59fe19d9399c4766fc787b3cd7130b66f643379afd402ad6c8cc091",
+            "aarch64-linux-gnu": "sha256:9498724487b5d62473fe6bff009fa3c1051ed4016f3f464f1acfbbfee9256b04",
+            "x86_64-linux-gnu": "sha256:4b2832966d38252ce2786e8f2b8e8324426f62d4ffc1a852aabc7057ce73d3fe",
+        },
+    },
+}
+
 # MAKE THE LATEST VERSION.
 
 def get_key(semver):
@@ -54,8 +97,10 @@ def get_key(semver):
     splitted = semver[1:].split(".")
     version = int(splitted[0])
     major = int(splitted[1])
-    minor_parts = splitted[2].split("-")
-    minor = int(minor_parts[0])
+    minor_parts = []
+    if len(splitted) > 2:
+        minor_parts = splitted[2].split("-")
+    minor = int(0 if len(minor_parts) == 0 else minor_parts[0])
     rc = None
     if len(minor_parts) > 1:
         rc = minor_parts[1]
@@ -67,6 +112,14 @@ _stable_semvers = sorted([key for key in VERSIONS.keys() if "rc" not in key], ke
 VERSIONS["latest"] = {k: v for k, v in VERSIONS[_stable_semvers[0]].items()}
 VERSIONS["latest"]["download_url_template"] = VERSIONS["latest"]["download_url_template"].format(
     version = _stable_semvers[0],
+    # No partial template ;(
+    platform = "{platform}",
+)
+
+_stable_erl_semvers = sorted([key for key in ERL_VERSIONS.keys() if "rc" not in key], key = get_key, reverse = True)
+ERL_VERSIONS["latest"] = {k: v for k, v in ERL_VERSIONS[_stable_erl_semvers[0]].items()}
+ERL_VERSIONS["latest"]["download_url_template"] = ERL_VERSIONS["latest"]["download_url_template"].format(
+    version = _stable_erl_semvers[0],
     # No partial template ;(
     platform = "{platform}",
 )

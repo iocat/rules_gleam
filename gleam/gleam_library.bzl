@@ -1,5 +1,5 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("//gleam:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
+load("//gleam:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_env_path", "get_erl_compiler_binaries", "get_erl_compiler_otp_files", "get_gleam_compiler")
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
 def _gleam_library_impl(ctx):
@@ -12,17 +12,25 @@ def _gleam_library_impl(ctx):
     gleam_compiler = get_gleam_compiler(ctx)
     if len(outputs.all_files):
         ctx.actions.run_shell(
-            inputs = inputs.sources + lib_inputs + [gleam_compiler],
+            inputs = inputs.sources + lib_inputs + get_erl_compiler_otp_files(ctx),
+            tools = [gleam_compiler] + get_erl_compiler_binaries(ctx),
             outputs = outputs.all_files,
             use_default_shell_env = True,
             mnemonic = "GleamLibraryCompile",
             command = """
+                export PATH="%s" &&
                 COMPILER="$(pwd)/%s" &&
                 cd %s &&
                 $COMPILER compile-package --package '.' --target erlang --out '.' --lib %s &&
                 mv ./%s/* ./ &&
                 mv ./ebin/* ./
-            """ % (gleam_compiler.path, working_root, lib_path, GLEAM_ARTEFACTS_DIR),
+            """ % (
+                get_env_path(ctx),
+                gleam_compiler.path,
+                working_root,
+                lib_path,
+                GLEAM_ARTEFACTS_DIR,
+            ),
             env = {
                 "FORCE_COLOR": "true",
             },
@@ -67,5 +75,6 @@ gleam_library = rule(
     ),
     toolchains = [
         "//gleam_tools:toolchain_type",
+        "//gleam_tools:erlang_toolchain_type",
     ],
 )
