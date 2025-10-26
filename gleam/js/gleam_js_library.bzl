@@ -1,9 +1,9 @@
 """JS library rule for Gleam."""
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
+load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR")
 load("//gleam/js:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_gleam_compiler")
 load("//gleam/js:provider.bzl", "GleamJsPackageInfo")
-load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR")
-load("@bazel_skylib//lib:paths.bzl", "paths")
 
 def _gleam_js_library_impl(ctx):
     """Implementation for the gleam_js_library rule."""
@@ -21,7 +21,7 @@ def _gleam_js_library_impl(ctx):
             command = " && ".join([
                 "COMPILER=$(pwd)/%s" % gleam_compiler.path,
                 "cd %s" % working_root,
-                "$COMPILER compile-package --target javascript --out . --lib %s" % lib_path,
+                "$COMPILER compile-package --target javascript --out . --lib %s --javascript-prelude %s" % (lib_path, get_js_prelude(ctx)),
                 "mv ./%s/* ." % GLEAM_ARTEFACTS_DIR,
             ]),
             env = {
