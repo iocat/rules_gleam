@@ -22,7 +22,7 @@ jobs:
         run: |
           cd examples/basic
           bazel build //...
-          tree bazel-out/k8-fastbuild/bin/example.sh.runfiles
+          tree bazel-out/k8-fastbuild/bin/example.sh.runfiles/rules_gleam++gleam+gleam_erlang_compiler_x86_64_linux_gnu/usr/local/lib/erlang/bin
           cat bazel-out/k8-fastbuild/bin/example.sh.runfiles/_main/example.sh
           bazel test  --test_output=streamed //...
           cd ../..
