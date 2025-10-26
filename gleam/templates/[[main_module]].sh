@@ -8,7 +8,7 @@ PACKAGE={PACKAGE}
 BASE=$(echo "$0.runfiles/_main")
 
 run() {
-  exec erl \
+  exec {ERL} \
     -pa "$BASE" \
     -eval "$PACKAGE@@main:run($PACKAGE)" \
     -noshell \
