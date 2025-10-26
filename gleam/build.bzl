@@ -239,6 +239,10 @@ def get_erl_compiler_binaries(ctx):
     tools = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools
     return [tools.escript, tools.erl, tools.erlc]
 
+def get_erl_binary(ctx):
+    tools = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools
+    return tools.erl
+
 def get_erl_compiler_otp_files (ctx):
     tools = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools
     return tools.otp

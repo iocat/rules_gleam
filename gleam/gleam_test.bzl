@@ -1,5 +1,5 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("//gleam:build.bzl", "COMMON_ATTRS", "get_erl_compiler_binaries", "get_erl_compiler_otp_files", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_env_path", "get_gleam_compiler")
+load("//gleam:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_for_dep", "declare_outputs", "get_env_path", "get_erl_binary", "get_erl_compiler_binaries", "get_erl_compiler_otp_files", "get_gleam_compiler")
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
 def _gleam_test_impl(ctx):
@@ -71,13 +71,14 @@ def _gleam_test_impl(ctx):
         is_executable = True,
         substitutions = {
             "{PACKAGE}": main_module,
+            "{ERL}": get_erl_binary(ctx).path.replace("external/", "../"),
         },
     )
 
     # Accumulate runfiles.
     runfiles = ctx.runfiles(files = ctx.files.data + outputs.beam_files +
                                     # Includes sources for debugging purposes.
-                                    inputs.sources)
+                                    inputs.sources + [get_erl_binary(ctx)] + get_erl_compiler_otp_files(ctx))
     transitive_runfiles = []
     for runfiles_attr in (
         ctx.attr.data,
