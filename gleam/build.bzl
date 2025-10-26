@@ -73,6 +73,7 @@ def declare_outputs(ctx, srcs, *, is_binary, main_module):
             output_beam_files.append(declare_out_file_with_ext(ctx, src, ".beam"))
             output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache"))
             output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache_meta"))
+            output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache_inline"))
         if ext == ".erl":
             # Erl produces only beam, since there's only one bytecode compilation pass.
             output_beam_files.append(declare_out_file_with_ext(ctx, src, ".beam", fully_qual_path = False))
@@ -243,7 +244,7 @@ def get_erl_binary(ctx):
     tools = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools
     return tools.erl
 
-def get_erl_compiler_otp_files (ctx):
+def get_erl_compiler_otp_files(ctx):
     tools = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools
     return tools.otp
 
@@ -260,6 +261,7 @@ DEFAULT_PATHS = ":".join([
     "/bin",
     "/opt/homebrew/bin",
 ])
+
 def get_env_path(ctx):
     existing_path = ctx.configuration.default_shell_env.get("PATH", "")
     return (existing_path + ":" if existing_path != "" else "") + ("$(pwd)/%s:%s" % (_get_erlang_compiler_dir(ctx), DEFAULT_PATHS))
