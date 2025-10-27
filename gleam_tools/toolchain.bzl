@@ -13,7 +13,7 @@ def _gleam_toolchain_impl(ctx):
         gleamtools = GleamToolsInfo(
             # erl_command = ctx.attr.erl_command,
             compiler = ctx.file.compiler,
-            js_preluade = ctx.file.js_prelude,
+            js_prelude = ctx.file.js_prelude,
         ),
     )
 
