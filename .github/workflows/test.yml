@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - main
+      - '*'
   pull_request:
 
 jobs:
@@ -12,12 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: "27.1.2"
-          gleam-version: "1.12.0"
-          rebar3-version: "3"
-          # elixir-version: "1"
       - uses: bazel-contrib/setup-bazel@0.8.1
       - name: test all
         run: |
@@ -26,7 +21,7 @@ jobs:
       - name: test examples
         run: |
           cd examples/basic
-          bazel test //...
+          bazel test  --test_output=streamed //...
           cd ../..
           cd examples/httpserver
           bazel build //...

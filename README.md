@@ -62,6 +62,8 @@ Commit and save both "gleam.toml", and "manifest.toml". The rest can be discarde
     use_repo(gleam, "hex_gleam_json", "hex_gleam_stdlib", "hex_gleeunit")
     ```
 
+The `use_repo` calls can be managed by hand, or you can call `bazel mod tidy` to have bazel manages it.
+
 4.  **Use Dependencies in `BUILD.bazel`**: You can now reference the Hex packages in your `BUILD.bazel` file.
 
     ```starlark
@@ -127,42 +129,58 @@ gleam_test(
 
 ### `gleam_library`
 
-Builds a Gleam library.
+Compiles Gleam source files into a library of Erlang modules.
 
 **Attributes:**
 
 - `name` (mandatory): A unique name for this target.
 - `srcs` (mandatory): A list of `.gleam` source files to be compiled.
-- `deps`: A list of other `gleam_library` targets that this library depends on.
+- `deps`: A list of other `gleam_library` or `gleam_erl_library` targets that this library depends on.
 - `data`: A list of data files needed by the library at runtime.
-- `strip_src_prefix`: A string to strip from the beginning of the source file paths.
+- `strip_src_prefix`: A string to strip from the beginning of source file paths when determining the Gleam module name. For example, with `strip_src_prefix = "src"`, a file at `src/my/module.gleam` will be compiled as the `my/module` module.
 
 ### `gleam_binary`
 
-Builds a Gleam binary.
+Creates an executable script to run a Gleam application. This rule compiles the specified sources and their dependencies and generates a runner that invokes the `main` function in the specified `main_module`.
 
 **Attributes:**
 
 - `name` (mandatory): A unique name for this target.
 - `srcs` (mandatory): A list of `.gleam` source files to be compiled.
-- `main_module` (mandatory): The name of the module containing the `main` function.
-- `deps`: A list of `gleam_library` targets that this binary depends on.
+- `main_module` (mandatory): The name of the Gleam module containing the `main` function (e.g., `"my_app/main"`). 
+    Default to the only gleam source. Must be provided if there are multiple Gleam modules.
+- `deps`: A list of `gleam_library` or `gleam_erl_library` targets that this binary depends on.
 - `data`: A list of data files needed by the binary at runtime.
-- `strip_src_prefix`: A string to strip from the beginning of the source file paths.
+- `strip_src_prefix`: A string to strip from the beginning of source file paths when determining the Gleam module name.
 
 ### `gleam_test`
 
-Builds and runs a Gleam test.
+Builds and runs a Gleam test using the `gleeunit` test runner. This rule compiles the test sources and their dependencies and executes them as a Bazel test.
 
 **Attributes:**
 
 - `name` (mandatory): A unique name for this target.
 - `srcs` (mandatory): A list of `.gleam` test files. Test file names must end with `_test.gleam` or `_tests.gleam`.
-- `deps`: A list of `gleam_library` targets that the test depends on.
+- `deps`: A list of `gleam_library` or `gleam_erl_library` targets that the test depends on.
 - `size`: The size of the test. Can be `small`, `medium`, `large`, or `enormous`.
 - `timeout`: The timeout for the test. Can be `short`, `moderate`, `long`, or `eternal`.
 - `data`: A list of data files needed by the test at runtime.
-- `strip_src_prefix`: A string to strip from the beginning of the source file paths.
+- `strip_src_prefix`: A string to strip from the beginning of source file paths when determining the Gleam module name. Used for external Hex module.
+
+### `gleam_erl_library`
+
+Builds a library from raw Erlang source files for use as a Foreign Function Interface (FFI) with Gleam.
+
+This rule is useful for integrating existing Erlang code into your Gleam project. The compiled Erlang modules can be called from Gleam using the external function syntax.
+
+**Note on Module Namespacing:** Unlike `gleam_library`, this rule does not namespace the compiled modules. The resulting BEAM files are placed at the root of the package. This means you must ensure that your Erlang module names are unique across your entire project and its dependencies to avoid conflicts.
+
+**Attributes:**
+
+- `name` (mandatory): A unique name for this target.
+- `srcs` (mandatory): A list of `.erl` source files to be compiled.
+- `deps`: A list of other `gleam_library` or `gleam_erl_library` targets that this library depends on.
+- `data`: A list of data files needed by the library at runtime.
 
 ## Gazelle Integration
 

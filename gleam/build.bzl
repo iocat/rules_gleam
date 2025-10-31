@@ -15,9 +15,9 @@ def declare_out_file_with_ext(ctx, src, ext, fully_qual_path = True):
     """
     file_path = ""
     if fully_qual_path:
-        file_path = paths.replace_extension(strip_src_prefix(ctx,src.path), ext).replace("/", "@")
+        file_path = paths.replace_extension(strip_src_prefix(ctx, src.path), ext).replace("/", "@")
     else:
-        file_path = paths.replace_extension(paths.basename(strip_src_prefix(ctx,src.path)), ext)
+        file_path = paths.replace_extension(paths.basename(strip_src_prefix(ctx, src.path)), ext)
 
     file = ctx.actions.declare_file(file_path)
     return file
@@ -73,6 +73,7 @@ def declare_outputs(ctx, srcs, *, is_binary, main_module):
             output_beam_files.append(declare_out_file_with_ext(ctx, src, ".beam"))
             output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache"))
             output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache_meta"))
+            output_cache_files.append(declare_out_file_with_ext(ctx, src, ".cache_inline"))
         if ext == ".erl":
             # Erl produces only beam, since there's only one bytecode compilation pass.
             output_beam_files.append(declare_out_file_with_ext(ctx, src, ".beam", fully_qual_path = False))
@@ -235,8 +236,37 @@ version = "0.0.0"
 def get_gleam_compiler(ctx):
     return ctx.toolchains["//gleam_tools:toolchain_type"].gleamtools.compiler
 
+def get_erl_compiler_binaries(ctx):
+    tools = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools
+    return [tools.escript, tools.erl, tools.erlc]
 
-def strip_src_prefix(ctx, src):    
+def get_erl_binary(ctx):
+    tools = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools
+    return tools.erl
+
+def get_erl_compiler_otp_files(ctx):
+    tools = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools
+    return tools.otp
+
+def _get_erlang_compiler_dir(ctx):
+    escript_bin = ctx.toolchains["//gleam_tools:erlang_toolchain_type"].gleamerlangtools.escript
+    return escript_bin.dirname
+
+DEFAULT_PATHS = ":".join([
+    "/usr/local/sbin",
+    "/usr/local/bin",
+    "/usr/sbin",
+    "/usr/bin",
+    "/sbin",
+    "/bin",
+    "/opt/homebrew/bin",
+])
+
+def get_env_path(ctx):
+    existing_path = ctx.configuration.default_shell_env.get("PATH", "")
+    return (existing_path + ":" if existing_path != "" else "") + ("$(pwd)/%s:%s" % (_get_erlang_compiler_dir(ctx), DEFAULT_PATHS))
+
+def strip_src_prefix(ctx, src):
     """
     Strip the prefix from the source path.
 
