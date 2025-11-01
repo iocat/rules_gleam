@@ -14,3 +14,7 @@ import (
 	_ "golang.org/x/sys/unix"
 	_ "golang.org/x/tools/go/vcs"
 )
+
+func main() {
+	// added main function is required for the build
+}
