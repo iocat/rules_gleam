@@ -6,8 +6,9 @@ load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR")
 load("//gleam/js:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_libs", "declare_outputs", "declare_runtime_mjs", "get_gleam_compiler", "get_js_prelude")
 load("//gleam/js:provider.bzl", "GleamJsPackageInfo")
 
-def _gleam_js_binary_impl(ctx):
-    """Implementation for the gleam_js_binary rule."""
+def _gleam_js_test_impl(ctx):
+    """Implementation for the gleam_js_test rule."""
+    package_dir = ctx.label.package
     main_module = ctx.attr.main_module
     if not main_module and len(ctx.files.srcs) == 1:
         main_module = paths.replace_extension(ctx.files.srcs[0].short_path, "").replace("/", "@")
@@ -25,7 +26,7 @@ def _gleam_js_binary_impl(ctx):
             inputs = inputs.sources + lib_inputs + [gleam_compiler],
             outputs = outputs.all_files,
             use_default_shell_env = True,
-            mnemonic = "GleamJsBinaryCompile",
+            mnemonic = "GleamJsTestCompile",
             command = " && ".join([
                 "COMPILER=$(pwd)/%s" % gleam_compiler.path,
                 "cd %s" % working_root,
@@ -95,8 +96,27 @@ def _gleam_js_binary_impl(ctx):
         ),
     ]
 
-gleam_js_binary = rule(
-    implementation = _gleam_js_binary_impl,
+def gleam_js_test(size = "small", timeout = None, **kwargs):
+    """Gleam test rule.
+
+    Compiles Gleam source files into an Javascript Deno executable that can be run.
+
+    Args:
+        size: The size of the test. One of "small", "medium", "large", "enormous". Defaults to "small".
+        timeout: The timeout for the test. One of "short", "moderate", "long", "eternal". Defaults to None.
+        **kwargs: Other keyword arguments passed to the gleam_js_test rules.
+
+    Returns:
+        A Bazel target.
+    """
+    deps = kwargs.get("deps", [])
+
+    deps.append("@rules_gleam//gleam/gleeunit_gleam_js")
+    kwargs["deps"] = deps
+    return _gleam_js_test(size = size, timeout = timeout, **kwargs)
+
+_gleam_js_test = rule(
+    implementation = _gleam_js_test_impl,
     executable = True,
     attrs = dict(
         COMMON_ATTRS,
