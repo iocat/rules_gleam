@@ -9,14 +9,28 @@ load("//gleam/js:provider.bzl", "GleamJsPackageInfo")
 def _gleam_js_test_impl(ctx):
     """Implementation for the gleam_js_test rule."""
     package_dir = ctx.label.package
-    main_module = ctx.attr.main_module
+    main_module = paths.join(package_dir, "gleam_test")
+    test_main = ctx.actions.declare_file("gleam_test.gleam")
+    dots_to_root = "./" if (
+        paths.dirname(main_module) == "."
+    ) else "".join(["../" for dot in paths.dirname(main_module).split("/")])
+    ctx.actions.expand_template(
+        template = ctx.file._main_test_module_tmpl,
+        output = test_main,
+        substitutions = {
+            "{DOTS_TO_ROOT}": dots_to_root,
+            "{MODULES_UNDER_TEST}": ", ".join(["\"" + paths.replace_extension(src.path, "") + "\"" for src in ctx.files.srcs]),
+            "{TIMEOUT_SECS}": "300" if ctx.attr.timeout == "eternal" else "60" if ctx.attr.timeout == "long" else "30" if ctx.attr.timeout == "moderate" else "10",
+        },
+    )
+
     if not main_module and len(ctx.files.srcs) == 1:
-        main_module = paths.replace_extension(ctx.files.srcs[0].short_path, "").replace("/", "@")
+        main_module = paths.replace_extension(ctx.files.srcs[0].path, "")
 
     if not main_module:
         fail("Main module is not provided. Please provide one via main_module attribute", "main_module")
 
-    inputs = declare_inputs(ctx, ctx.files.srcs)
+    inputs = declare_inputs(ctx, ctx.files.srcs + [test_main])
     lib_inputs, lib_path = declare_libs(ctx, ctx.attr.deps)
     outputs = declare_outputs(ctx, ctx.files.srcs)
     working_root = paths.dirname(inputs.toml_file.path)
@@ -56,7 +70,7 @@ def _gleam_js_test_impl(ctx):
         output = output_entry_point,
         is_executable = True,
         substitutions = {
-            "[[main_js_path]]": main_js_path,
+            "{MAIN_JS}": main_js_path,
         },
     )
 
@@ -67,7 +81,7 @@ def _gleam_js_test_impl(ctx):
         output = output_sh_executable,
         is_executable = True,
         substitutions = {
-            "{main_js}": paths.join(ctx.label.package, output_entry_point.basename),
+            "{MAIN_JS}": paths.join(ctx.label.package, output_entry_point.basename),
         },
     )
 
@@ -111,13 +125,13 @@ def gleam_js_test(size = "small", timeout = None, **kwargs):
     """
     deps = kwargs.get("deps", [])
 
-    deps.append("@rules_gleam//gleam/gleeunit_gleam_js")
+    deps.append("@rules_gleam//gleam/gleeunit:gleeunit_gleam_js")
     kwargs["deps"] = deps
     return _gleam_js_test(size = size, timeout = timeout, **kwargs)
 
 _gleam_js_test = rule(
     implementation = _gleam_js_test_impl,
-    executable = True,
+    test = True,
     attrs = dict(
         COMMON_ATTRS,
         srcs = attr.label_list(
@@ -129,6 +143,11 @@ _gleam_js_test = rule(
         deps = attr.label_list(
             doc = "The list of dependent gleam modules.",
             providers = [GleamJsPackageInfo],
+        ),
+        _main_test_module_tmpl = attr.label(
+            default = "//gleam/js/templates:gleam_test.gleam",
+            allow_single_file = True,
+            doc = "The gleam file template containing the test main function.",
         ),
         _main_js = attr.label(
             default = "//gleam/js/templates:main_js.mjs",

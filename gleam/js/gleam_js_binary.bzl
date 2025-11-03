@@ -10,10 +10,10 @@ def _gleam_js_binary_impl(ctx):
     """Implementation for the gleam_js_binary rule."""
     main_module = ctx.attr.main_module
     if not main_module and len(ctx.files.srcs) == 1:
-        main_module = paths.replace_extension(ctx.files.srcs[0].short_path, "").replace("/", "@")
+        main_module = paths.replace_extension(ctx.files.srcs[0].short_path, "")
 
     if not main_module:
-        fail("Main module is not provided. Please provide one via main_module attribute", "main_module")
+        fail("Main module is not provided. Please provide one via main_module attribute")
 
     inputs = declare_inputs(ctx, ctx.files.srcs)
     lib_inputs, lib_path = declare_libs(ctx, ctx.attr.deps)
@@ -30,7 +30,7 @@ def _gleam_js_binary_impl(ctx):
                 "COMPILER=$(pwd)/%s" % gleam_compiler.path,
                 "cd %s" % working_root,
                 "$COMPILER compile-package --target javascript --package '.' --out '.' --lib %s --javascript-prelude %s" % (lib_path, get_js_prelude(ctx).path),
-                # Move cache outside
+                # Move cache files outside
                 "mv ./%s/* ." % GLEAM_ARTEFACTS_DIR,
             ] + ([
                 # Move mjs outside
@@ -46,7 +46,7 @@ def _gleam_js_binary_impl(ctx):
     runfiles = runfiles.merge_all([dep[DefaultInfo].default_runfiles for dep in ctx.attr.deps])
 
     # Create the entry point script
-    main_module_filename = main_module.split("@")[-1]
+    main_module_filename = main_module.split("/")[-1]
     output_entry_point = ctx.actions.declare_file(main_module_filename + "_main.mjs")
     main_js_path = "./" + main_module_filename + ".mjs"
 
@@ -55,7 +55,7 @@ def _gleam_js_binary_impl(ctx):
         output = output_entry_point,
         is_executable = True,
         substitutions = {
-            "[[main_js_path]]": main_js_path,
+            "{MAIN_JS}": main_js_path,
         },
     )
 
@@ -66,7 +66,7 @@ def _gleam_js_binary_impl(ctx):
         output = output_sh_executable,
         is_executable = True,
         substitutions = {
-            "{main_js}": paths.join(ctx.label.package, output_entry_point.basename),
+            "{MAIN_JS}": paths.join(ctx.label.package, output_entry_point.basename),
         },
     )
 

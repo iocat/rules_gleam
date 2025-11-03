@@ -3,45 +3,5 @@
 import gleam/list
 import gleam/string
 
-pub fn main() {
-  let result =
-    [{MODULES_UNDER_TEST}]
-    |> list.map(fn(path) { path |> string.replace("/", "@") })
-    |> list.map(dangerously_convert_string_to_atom(_, Utf8))
-    |> run_test({TIMEOUT_SECS}, [
-      Verbose, NoTty,
-      Report(#(GleamGleeunitProgressFfi, [Colored(True)]))
-    ])
-
-  let code = case result {
-    Ok(_) -> 0
-    Error(_) -> 1
-  }
-  halt(code)
-}
-
-type ReportModuleName {
-  GleamGleeunitProgressFfi
-}
-
-type GleamGleeunitProgressFfiOption {
-  Colored(Bool)
-}
-
-type EunitOption {
-  Verbose
-  NoTty
-  Report(#(ReportModuleName, List(GleamGleeunitProgressFfiOption)))
-}
-
-@external(javascript, "{TEST_MJS}", "exit")
-fn halt(a: Int) -> Nil
-
-@external(javascript, "{TEST_MJS}", "run_eunit")
-fn run_test(a: List(Atom), timeout_sec: Int, b: List(EunitOption)) -> Result(Nil, a)
-
-type Atom
-
-type Encoding {
-  Utf8
-}
+@external(javascript, "{DOTS_TO_ROOT}/gleeunit_ffi.mjs", "main")
+pub fn main()

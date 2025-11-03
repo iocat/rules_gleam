@@ -1,3 +1,7 @@
 exports_files(
-    glob(["*.mjs", "*.sh"])
+    glob([
+        "*.mjs",
+        "*.sh",
+        "*.gleam",
+    ]),
 )

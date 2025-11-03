@@ -87,7 +87,6 @@ def declare_runtime_mjs(ctx, output_mjs, deps):
             transitive_files.append(dep[GleamJsPackageInfo].js_module)
     return (depset(direct = direct_files, transitive = transitive_files), {"_main/gleam.mjs": get_js_prelude(ctx)})
 
-
 def declare_outputs(ctx, srcs):
     """Calculates module names and declares compilation output files.
 
@@ -108,6 +107,7 @@ def declare_outputs(ctx, srcs):
     for src in srcs:
         src_path = strip_src_prefix(ctx, src.path)
         module_name = paths.replace_extension(src_path, "").replace("/", "@")
+
         # Unlike, a erl build, output mjs isn't flatten to "@" path, but hierarchical folder.
         js_files.append(ctx.actions.declare_file(paths.basename(paths.replace_extension(src_path, "")) + ".mjs"))
         cache_files.append(ctx.actions.declare_file(module_name + ".cache"))
@@ -158,7 +158,7 @@ def declare_libs(ctx, deps):
     for dep in deps:
         if GleamJsPackageInfo in dep:
             target = dep[GleamJsPackageInfo]
-            for file in target.js_module.to_list() :
+            for file in target.js_module.to_list():
                 link = ctx.actions.declare_file(paths.join(lib_path, target.target_name, paths.basename(file.path)))
                 ctx.actions.symlink(
                     output = link,
