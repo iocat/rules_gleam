@@ -3,7 +3,7 @@ load("//gleam:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_f
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
 def _gleam_binary_impl(ctx):
-    main_module = ctx.attr.main_module
+    main_module = ctx.attr.main_module.replace("/", "@")
     if main_module == "" and len(ctx.files.srcs) == 1:
         main_module = paths.replace_extension(ctx.files.srcs[0].path, "").replace("/", "@")
     if main_module == "":
@@ -87,11 +87,12 @@ def _gleam_binary_impl(ctx):
             dir = paths.dirname(paths.relativize(dep_beam_module.path, ctx.bin_dir.path))
             dep_beam_path = paths.basename(dep_beam_module.path)
 
-            # For non-root beam modules, carry it to the current directory.
+            # For non-root beam modules, not the same as the current package,
+            # carry it to the current directory.
             if dir != "":
                 if dep_beam_path in seen_beam_module:
                     if seen_beam_module.get(dep_beam_path) != dir:
-                        fail("""Beam module {MODULE} conflits at {DIR}, existed at {EXISTED}, probably because of Erlang FFI has 
+                        fail("""Beam module {MODULE} conflicts at {DIR}, existed at {EXISTED}, probably because of Erlang FFI has 
                             conflicting name. Note that gleam_erl_library() does not create 
                             namespace like a Gleam module.""".format(
                             MODULE = dep_beam,
@@ -100,9 +101,12 @@ def _gleam_binary_impl(ctx):
                         ))
                 else:
                     seen_beam_module.update([(dep_beam_path, dir)])
-                    dep_beam = ctx.actions.declare_file(paths.basename(dep_beam_module.path))
-                    ctx.actions.symlink(output = dep_beam, target_file = dep_beam_module)
-                    dep_beam_symlinks.append(dep_beam)
+                    if dir != ctx.label.package:
+                        dep_beam = ctx.actions.declare_file(paths.basename(dep_beam_module.path))
+                        ctx.actions.symlink(output = dep_beam, target_file = dep_beam_module)
+                        dep_beam_symlinks.append(dep_beam)
+                    else:
+                        dep_beam_symlinks.append(dep_beam_module)
             else:
                 seen_beam_module.update([(dep_beam_path, "")])
                 dep_beam_symlinks.append(dep_beam_module)

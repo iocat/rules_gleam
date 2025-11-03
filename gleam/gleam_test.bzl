@@ -3,15 +3,16 @@ load("//gleam:build.bzl", "COMMON_ATTRS", "declare_inputs", "declare_lib_files_f
 load("//gleam:provider.bzl", "GLEAM_ARTEFACTS_DIR", "GleamErlPackageInfo")
 
 def _gleam_test_impl(ctx):
-    package_dir = ctx.files.srcs[0].dirname
-    main_module = (package_dir.replace("/", "@") + "/") if package_dir != "." else "" + "gleam_test"
+    package_dir = ctx.label.package
+    parent_module = (package_dir.replace("/", "@")) if package_dir != "." else ""
+    main_module = ((parent_module + "@") if len(parent_module) != 0 else "") + "gleam_test"
     test_main = ctx.actions.declare_file("gleam_test.gleam")
     ctx.actions.expand_template(
         template = ctx.file._main_test_module_tmpl,
         output = test_main,
         substitutions = {
             "{TEST_MODULE}": main_module,
-            "{MODULES_UNDER_TEST}": ", ".join(["\"" + paths.replace_extension(paths.basename(src.path), "").replace("/", "@") + "\"" for src in ctx.files.srcs]),
+            "{MODULES_UNDER_TEST}": ", ".join(["\"" + paths.replace_extension(src.path, "").replace("/", "@") + "\"" for src in ctx.files.srcs]),
             "{TIMEOUT_SECS}": "300" if ctx.attr.timeout == "eternal" else "60" if ctx.attr.timeout == "long" else "30" if ctx.attr.timeout == "moderate" else "10",
         },
     )
@@ -97,11 +98,12 @@ def _gleam_test_impl(ctx):
             dir = paths.dirname(paths.relativize(dep_beam_module.path, ctx.bin_dir.path))
             dep_beam_path = paths.basename(dep_beam_module.path)
 
-            # For non-root beam modules, carry it to the current directory.
+            # For non-root beam modules, not the same as the current
+            # package, carry it to the current directory.
             if dir != "":
                 if dep_beam_path in seen_beam_module:
                     if seen_beam_module.get(dep_beam_path) != dir:
-                        fail("""Beam module {MODULE} conflits at {DIR}, existed at {EXISTED}, probably because of Erlang FFI has 
+                        fail("""Beam module {MODULE} conflicts at {DIR}, existed at {EXISTED}, probably because of Erlang FFI has 
                             conflicting name. Note that gleam_erl_library() does not create 
                             namespace like a Gleam module.""".format(
                             MODULE = dep_beam,
@@ -110,9 +112,12 @@ def _gleam_test_impl(ctx):
                         ))
                 else:
                     seen_beam_module.update([(dep_beam_path, dir)])
-                    dep_beam = ctx.actions.declare_file(paths.basename(dep_beam_module.path))
-                    ctx.actions.symlink(output = dep_beam, target_file = dep_beam_module)
-                    dep_beam_symlinks.append(dep_beam)
+                    if dir != ctx.label.package:
+                        dep_beam = ctx.actions.declare_file(paths.basename(dep_beam_module.path))
+                        ctx.actions.symlink(output = dep_beam, target_file = dep_beam_module)
+                        dep_beam_symlinks.append(dep_beam)
+                    else:
+                        dep_beam_symlinks.append(dep_beam_module)
             else:
                 seen_beam_module.update([(dep_beam_path, "")])
                 dep_beam_symlinks.append(dep_beam_module)
